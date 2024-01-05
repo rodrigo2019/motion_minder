@@ -39,7 +39,6 @@ function check_download {
         if git -C $motion_minderdirname clone https://github.com/rodrigo2019/motion_minder.git $motion_minderbasename; then
             chmod +x ${MOTION_MINDER_PATH}/install.sh
             printf "[DOWNLOAD] Download complete!\n\n"
-            chmod +x ${MOTION_MINDER_PATH}/motion_minder/motion_minder.sh
         else
             echo "[ERROR] Download of Motion Minder git repository failed!"
             exit -1
@@ -69,6 +68,7 @@ function link_extension {
     echo "[INSTALL] Linking scripts to your config directory..."
 
     ln -frsn ${MOTION_MINDER_PATH}/motion_minder ${USER_CONFIG_PATH}/motion_minder
+    chmod +x ${USER_CONFIG_PATH}/motion_minder/motion_minder.sh
 }
 
 function link_gcodeshellcommandpy {
