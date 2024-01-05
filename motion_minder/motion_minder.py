@@ -4,6 +4,7 @@ import os
 import requests
 
 _MOONRAKER_URL = "http://127.0.0.1:7125"
+_NAMESPACE = "motion_minder"
 
 
 def _read_gcode(filename):
@@ -39,7 +40,7 @@ def _read_gcode(filename):
 
 
 def _update_odometer(x=None, y=None, z=None):
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace=maintenance_tracker"
+    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
 
     def update_axis(axis, value):
         if value is not None:
@@ -79,7 +80,7 @@ def _process_history(gcode_folder):
 
 
 def _reset_db(initial_km):
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace=maintenance_tracker"
+    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
 
     # Reset init_value
     init_value_url = f"{base_url}&key=init_value&value={initial_km * 1000 * 1000}"
@@ -94,7 +95,7 @@ def _reset_db(initial_km):
 
 
 def _query_db():
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace=maintenance_tracker"
+    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
 
     def get_and_convert_value(key):
         url = f"{base_url}&key={key}"
