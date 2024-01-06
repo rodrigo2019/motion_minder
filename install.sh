@@ -51,7 +51,7 @@ function check_download {
 function setup_venv {
     if [ ! -d "${MOTION_MINDER_VENV_PATH}" ]; then
         echo "[SETUP] Creating Python virtual environment..."
-        python3 -m venv "${MOTION_MINDER_VENV_PATH}"
+        virtualenv -p /usr/bin/python3 "${MOTION_MINDER_VENV_PATH}"
     else
         echo "[SETUP] Virtual environment already exists. Continuing..."
     fi
