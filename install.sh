@@ -68,7 +68,6 @@ function link_extension {
     echo "[INSTALL] Linking scripts to your config directory..."
 
     ln -frsn ${MOTION_MINDER_PATH}/motion_minder ${USER_CONFIG_PATH}/motion_minder
-    chmod +x ${USER_CONFIG_PATH}/motion_minder/motion_minder.sh
 }
 
 function link_gcodeshellcommandpy {
