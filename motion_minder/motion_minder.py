@@ -22,7 +22,10 @@ def _read_gcode(filename):
         command, *values = line.split(" ")
         moves = {}
         for value in values:
-            moves[value[0]] = float(value[1:])
+            try:
+                moves[value[0]] = float(value[1:])
+            except ValueError:
+                pass
 
         if command == "G90":
             mode = "absolute"
