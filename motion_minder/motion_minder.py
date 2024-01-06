@@ -7,7 +7,7 @@ _MOONRAKER_URL = "http://127.0.0.1:7125"
 _NAMESPACE = "motion_minder"
 
 
-def _read_gcode(filename):
+def _read_gcode(filename, max_extrusion=None):
     with open(filename) as f:
         lines = f.readlines()
 
@@ -15,7 +15,7 @@ def _read_gcode(filename):
     lines = [line for line in lines if line.split(" ")[0] in valid_commands]
 
     mode = "absolute"
-    distances = {"x": 0, "y": 0, "z": 0}
+    distances = {"x": 0, "y": 0, "z": 0, "e": 0}
     last_positions = {"x": 0, "y": 0, "z": 0}
 
     for line in lines:
@@ -39,6 +39,11 @@ def _read_gcode(filename):
                         current_value - last_positions[axis.lower()]) \
                         if mode == "absolute" else current_value
                     last_positions[axis.lower()] = current_value
+            if "E" in moves:
+                distances["e"] += moves["E"]
+        if max_extrusion is not None and distances["e"] > max_extrusion:
+            break
+
     return distances["x"], distances["y"], distances["z"]
 
 
@@ -64,16 +69,21 @@ def _process_gcode(filename):
 
 
 def _process_history(gcode_folder):
-    # iterate over folder for all *.gcode files
+    n_jobs = requests.get(f"{_MOONRAKER_URL}/server/history/list?limit=1").json()["result"]["count"]
+    jobs = requests.get(f"{_MOONRAKER_URL}/server/history/list?limit={n_jobs}").json()["result"]["jobs"]
 
-    files = os.listdir(gcode_folder)
-    files = [file for file in files if file.endswith(".gcode")]
     total_x = 0
     total_y = 0
     total_z = 0
-    for file in files:
-        file = f"{gcode_folder}/{file}"
-        x, y, z = _read_gcode(file)
+    for job in jobs:
+        if not job["exists"]:
+            continue
+        if job['status'] != 'complete':
+            max_extrusion = job['filament_used']
+        else:
+            max_extrusion = None
+        fname = f"{gcode_folder}/{job['filename']}"
+        x, y, z = _read_gcode(fname, max_extrusion)
         total_x += x
         total_y += y
         total_z += z
