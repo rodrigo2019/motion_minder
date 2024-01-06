@@ -4,7 +4,7 @@ Motion tracking for rails maintenance.
 
 ## Installation
 
-Follow these steps to install the Shake&Tune module in your printer:
+Follow these steps to install the Motion Minder in your printer:
   1. Then, you can install the Shake&Tune package by running over SSH on your printer:
      ```bash
      wget -O - https://raw.githubusercontent.com/rodrigo2019/motion_minder/main/install.sh | bash
