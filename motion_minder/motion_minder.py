@@ -8,57 +8,57 @@ _NAMESPACE = "motion_minder"
 
 
 def _read_gcode(filename, max_extrusion=None):
-    with open(filename) as f:
-        lines = f.readlines()
-
+    
     valid_commands = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
-    lines = [line for line in lines if line.split(" ")[0] in valid_commands]
 
     mode = "absolute"
     extruder_mode = "absolute"
     distances = {"x": 0, "y": 0, "z": 0, "e": 0}
     last_positions = {"x": 0, "y": 0, "z": 0, "e": 0}
 
-    for line in lines:
-        command, *values = line.split(" ")
-        moves = {}
-        for value in values:
-            try:
-                moves[value[0]] = float(value[1:])
-            except ValueError:
-                pass
+    with open(filename) as f:
+        for line in f:
+            command, *values = line.split(" ")
+            if command not in valid_commands:
+                continue
+            moves = {}
+            for value in values:
+                try:
+                    moves[value[0]] = float(value[1:])
+                except ValueError:
+                    pass
 
-        if command == "G90":
-            mode = "absolute"
-            extruder_mode = "absolute"
-        elif command == "G91":
-            mode = "relative"
-            extruder_mode = "relative"
-        elif command == "M82":
-            extruder_mode = "absolute"
-        elif command == "M83":
-            extruder_mode = "relative"
-        elif command in ["G1", "G0"]:
-            for axis in ["X", "Y", "Z"]:
-                if axis in moves:
-                    current_value = moves[axis]
-                    distances[axis.lower()] += abs(
-                        current_value - last_positions[axis.lower()]) \
-                        if mode == "absolute" else current_value
-                    last_positions[axis.lower()] = current_value
-            if "E" in moves:
-                distances["e"] = abs(moves["E"] - last_positions["e"]) \
-                    if extruder_mode == "absolute" else moves["E"]
-                last_positions["e"] = moves["E"]
-        elif command == "G92":
-            for axis in ["X", "Y", "Z", "E"]:
-                if axis in moves:
-                    last_positions[axis.lower()] = moves[axis]
+            if command == "G90":
+                mode = "absolute"
+                extruder_mode = "absolute"
+            elif command == "G91":
+                mode = "relative"
+                extruder_mode = "relative"
+            elif command == "M82":
+                extruder_mode = "absolute"
+            elif command == "M83":
+                extruder_mode = "relative"
+            elif command in ["G1", "G0"]:
+                for axis in ["X", "Y", "Z"]:
+                    if axis in moves:
+                        current_value = moves[axis]
+                        distances[axis.lower()] += abs(
+                            current_value - last_positions[axis.lower()]) \
+                            if mode == "absolute" else current_value
+                        last_positions[axis.lower()] = current_value
+                if "E" in moves:
+                    distances["e"] = abs(moves["E"] - last_positions["e"]) \
+                        if extruder_mode == "absolute" else moves["E"]
+                    last_positions["e"] = moves["E"]
+            elif command == "G92":
+                for axis in ["X", "Y", "Z", "E"]:
+                    if axis in moves:
+                        last_positions[axis.lower()] = moves[axis]
 
-        if max_extrusion is not None and distances["e"] > max_extrusion:
-            break
+            if max_extrusion is not None and distances["e"] > max_extrusion:
+                break
 
-    return distances["x"], distances["y"], distances["z"]
+        return distances["x"], distances["y"], distances["z"]
 
 
 def _update_odometer(x=None, y=None, z=None):
