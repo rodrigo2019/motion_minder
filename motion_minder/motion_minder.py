@@ -11,12 +11,13 @@ def _read_gcode(filename, max_extrusion=None):
     with open(filename) as f:
         lines = f.readlines()
 
-    valid_commands = {"G90", "G91", "G1", "G0"}
+    valid_commands = {"G90", "G91", "G1", "G0", "M82", "M83"}
     lines = [line for line in lines if line.split(" ")[0] in valid_commands]
 
     mode = "absolute"
+    extruder_mode = "absolute"
     distances = {"x": 0, "y": 0, "z": 0, "e": 0}
-    last_positions = {"x": 0, "y": 0, "z": 0}
+    last_positions = {"x": 0, "y": 0, "z": 0, "e": 0}
 
     for line in lines:
         command, *values = line.split(" ")
@@ -29,8 +30,14 @@ def _read_gcode(filename, max_extrusion=None):
 
         if command == "G90":
             mode = "absolute"
+            extruder_mode = "absolute"
         elif command == "G91":
             mode = "relative"
+            extruder_mode = "relative"
+        elif command == "M82":
+            extruder_mode = "absolute"
+        elif command == "M83":
+            extruder_mode = "relative"
         elif command in ["G1", "G0"]:
             for axis in ["X", "Y", "Z"]:
                 if axis in moves:
@@ -40,7 +47,9 @@ def _read_gcode(filename, max_extrusion=None):
                         if mode == "absolute" else current_value
                     last_positions[axis.lower()] = current_value
             if "E" in moves:
-                distances["e"] += moves["E"]
+                distances["e"] = abs(moves["E"] - last_positions["e"]) \
+                    if extruder_mode == "absolute" else moves["E"]
+                last_positions["e"] = moves["E"]
         if max_extrusion is not None and distances["e"] > max_extrusion:
             break
 
