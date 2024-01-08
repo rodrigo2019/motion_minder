@@ -140,11 +140,6 @@ def _reset_db(initial_km):
     init_value_url = f"{base_url}&key=init_value&value={initial_km * 1000 * 1000}"
     requests.post(init_value_url)
 
-    # Reset curr_value_x, curr_value_y, curr_value_z
-    for axis in ['x', 'y', 'z']:
-        curr_value_url = f"{base_url}&key=curr_value_{axis}&value=0"
-        requests.post(curr_value_url)
-
     print(f"Database reset to: {initial_km} km")
 
 
