@@ -176,6 +176,12 @@ if __name__ == "__main__":
     if arg == "init_km":
         initial_km_ = float(sys.argv[2])
         _reset_db(initial_km_)
+    elif arg == "reset":
+        axis = sys.argv[2].lower()
+        if axis not in ["x", "y", "z"]:
+            raise ValueError("Axis must be X, Y or Z")
+        set_odometer(_MOONRAKER_URL, _NAMESPACE, **{axis: 0})
+        print(f"Odometer for axis {axis} reset to 0")
     elif arg == "query":
         _query_db()
     elif arg == "process_history":
