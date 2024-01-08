@@ -60,6 +60,33 @@ def _read_gcode(filename, max_extrusion=None):
 
         return distances["x"], distances["y"], distances["z"]
 
+def set_odometer(moonraker_url, namespace, x=None, y=None, z=None):
+    base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
+
+    def update_axis(axis, value):
+        if value is not None:
+            requests.post(f"{base_url}&key=odometer_{axis}&value={value}")
+
+    update_axis('x', x)
+    update_axis('y', y)
+    update_axis('z', z)
+
+
+def get_odometer(moonraker_url, namespace):
+    def get_odometer_value(key):
+        response = requests.get(f"{base_url}&key={key}").json()
+        if "error" in response:
+            return 0
+        else:
+            return float(response.get("result", {}).get("value", 0))
+
+    base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
+
+    x = get_odometer_value("odometer_x")
+    y = get_odometer_value("odometer_y")
+    z = get_odometer_value("odometer_z")
+
+    return x, y, z
 
 def _update_odometer(x=None, y=None, z=None):
     base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
