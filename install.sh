@@ -4,6 +4,7 @@ SYSTEMDDIR="/etc/systemd/system"
 MOTION_MINDER_SERVICE="MotionMinder.service"
 USER_CONFIG_PATH="${HOME}/printer_data/config"
 KLIPPER_PATH="${HOME}/klipper"
+MOONRAKER_MANAGED_SERVICES_FILE="${HOME}/printer_data/moonraker.asvc"
 
 MOTION_MINDER_PATH="${HOME}/motion_minder"
 MOTION_MINDER_VENV_PATH="${HOME}/motion_minder-env"
@@ -107,6 +108,15 @@ EOF
   ### launching instance
   printf "[INSTALL] Launching MotionMinder instance ...\n"
   sudo systemctl start ${MOTION_MINDER_SERVICE}
+
+  # Check if the string is already present in the file on a line by itself
+  if grep -Fxq "MotionMinder" "${MOONRAKER_MANAGED_SERVICES_FILE}"; then
+    printf "[INSTALL] MotionMinder already present in Moonraker managed services. Continuing...\n"
+  else
+    # If not present, add the string to the file as a new line
+    echo "MotionMinder" >> "${MOONRAKER_MANAGED_SERVICES_FILE}"
+    printf "[INSTALL] MotionMinder added to Moonraker managed services!\n"
+fi
 }
 
 function restart_klipper {
