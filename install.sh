@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SYSTEMDDIR="/etc/systemd/system"
+MOTION_MINDER_SERVICE="MotionMinder.service"
 USER_CONFIG_PATH="${HOME}/printer_data/config"
 KLIPPER_PATH="${HOME}/klipper"
 
@@ -79,6 +81,34 @@ function link_gcodeshellcommandpy {
     fi
 }
 
+create_service() {
+  ### create systemd service file
+  sudo /bin/sh -c "cat > ${SYSTEMDDIR}/${MOTION_MINDER_SERVICE}" <<EOF
+#Systemd service file for Motion Minder
+[Unit]
+Description=Starts Motion Minder on startup
+After=network-online.target moonraker.service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+User=${CURRENT_USER}
+ExecStart=${MOTION_MINDER_VENV_PATH}/bin/python ${MOTION_MINDER_PATH}/motion_minder/printer_odometer.py
+Restart=always
+RestartSec=5
+EOF
+
+  ### enable instance
+  sudo systemctl enable ${MOTION_MINDER_SERVICE}
+  report_status "${MOTION_MINDER_SERVICE} instance created!"
+
+  ### launching instance
+  report_status "Launching moonraker-telegram-bot instance ..."
+  sudo systemctl start ${MOTION_MINDER_SERVICE}
+}
+
 function restart_klipper {
     echo "[POST-INSTALL] Restarting Klipper..."
     sudo systemctl restart klipper
@@ -96,4 +126,5 @@ check_download
 setup_venv
 link_extension
 link_gcodeshellcommandpy
+create_service
 restart_klipper
