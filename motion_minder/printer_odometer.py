@@ -8,7 +8,7 @@ import websocket
 
 import motion_minder
 
-_MOONRAKER_URL = "192.168.100.96:7125"
+_MOONRAKER_URL = "127.0.0.1:7125"
 _NAMESPACE = "motion_minder"
 
 
