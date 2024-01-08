@@ -158,9 +158,9 @@ def _query_db():
         return value / 1000 / 1000
 
     init_value = get_and_convert_value("init_value")
-    curr_value_x = get_and_convert_value("curr_value_x")
-    curr_value_y = get_and_convert_value("curr_value_y")
-    curr_value_z = get_and_convert_value("curr_value_z")
+    curr_value_x = get_and_convert_value("odometer_x")
+    curr_value_y = get_and_convert_value("odometer_y")
+    curr_value_z = get_and_convert_value("odometer_z")
 
     health_x = (init_value - curr_value_x) / init_value
     health_y = (init_value - curr_value_y) / init_value
