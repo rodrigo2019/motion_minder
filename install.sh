@@ -94,7 +94,7 @@ WantedBy=multi-user.target
 
 [Service]
 Type=simple
-User=${CURRENT_USER}
+User=${USER}
 ExecStart=${MOTION_MINDER_VENV_PATH}/bin/python ${MOTION_MINDER_PATH}/motion_minder/printer_odometer.py
 Restart=always
 RestartSec=5
@@ -102,10 +102,10 @@ EOF
 
   ### enable instance
   sudo systemctl enable ${MOTION_MINDER_SERVICE}
-  report_status "${MOTION_MINDER_SERVICE} instance created!"
+  printf "[INSTALL] ${MOTION_MINDER_SERVICE} instance created!\n"
 
   ### launching instance
-  report_status "Launching moonraker-telegram-bot instance ..."
+  printf "[INSTALL] Launching MotionMinder instance ...\n"
   sudo systemctl start ${MOTION_MINDER_SERVICE}
 }
 
