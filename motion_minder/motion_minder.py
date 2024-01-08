@@ -158,10 +158,14 @@ def _query_db():
         value = float(ret.json()["result"]["value"])
         return value / 1000 / 1000
 
-    init_value = get_and_convert_value("init_value")
-    curr_value_x = get_and_convert_value("odometer_x")
-    curr_value_y = get_and_convert_value("odometer_y")
-    curr_value_z = get_and_convert_value("odometer_z")
+    try:
+        init_value = get_and_convert_value("init_value")
+        curr_value_x = get_and_convert_value("odometer_x")
+        curr_value_y = get_and_convert_value("odometer_y")
+        curr_value_z = get_and_convert_value("odometer_z")
+    except:
+        print("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
+        return
 
     health_x = (init_value - curr_value_x) / init_value
     health_y = (init_value - curr_value_y) / init_value
