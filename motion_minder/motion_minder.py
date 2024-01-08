@@ -1,5 +1,4 @@
 import sys
-import os
 
 import requests
 
@@ -184,12 +183,8 @@ if __name__ == "__main__":
         _reset_db(initial_km_)
     elif arg == "query":
         _query_db()
-    elif arg == "process_history" or arg == "process_gcode":
+    elif arg == "process_history":
         ret = requests.get(f"{_MOONRAKER_URL}/server/files/roots")
         folders = ret.json()["result"]
         gcode_folder_ = [folder for folder in folders if folder["name"] == "gcodes"][0]["path"]
-        if arg == "process_history":
-            _process_history(gcode_folder_)
-        else:
-            filename_ = f"{gcode_folder_}/{sys.argv[2]}"
-            _process_gcode(filename_)
+        _process_history(gcode_folder_)
