@@ -43,7 +43,7 @@ class PrinterOdometer:
         self._homed_axis = ""
         try:
             if 200 <= ret.status_code < 300:
-                self._homed_axis = ret.json().get("result", {}).get("status", {}).\
+                self._homed_axis = ret.json().get("result", {}).get("status", {}). \
                     get("toolhead", {}).get("homed_axes", "")
         except:
             pass
@@ -62,42 +62,54 @@ class PrinterOdometer:
                     pass
             time.sleep(2)
 
+    def _update_single_axis_odometer(self, axis, value):
+        if self._last_position[axis] is not None:
+            self._odom[axis] += abs(value - self._last_position[axis])
+        self._last_position[axis] = value
+
+    def _process_motion_report(self, param):
+        if "motion_report" not in param:
+            return
+
+        live_position = param["motion_report"].get("live_position", None)
+        if live_position is None:
+            return
+
+        for axis in ["x", "y", "z"]:
+            value = live_position.get(axis)
+            if value is not None and axis in self._homed_axis:
+                self._update_single_axis_odometer(axis, value)
+        self._messages_counter += 1
+
+        if self._messages_counter % self._update_interval == 0:
+            motion_minder.set_odometer(
+                f"http://{_MOONRAKER_URL}", _NAMESPACE,
+                self._odom["x"], self._odom["y"], self._odom["z"]
+            )
+
+    def _process_toolhead(self, param):
+        if not "toolhead" in param:
+            return
+        homed_axes = param["toolhead"].get("homed_axes", None)
+        if homed_axes is not None:
+            self._homed_axis = homed_axes
+
+    def _process_klipper_state(self, param):
+        if not "klipper" in param:
+            return
+        klipper = param["klipper"]
+        state = klipper.get("active_state", None)
+        if state is not None and state == "inactive":
+            self._subscribed = False
+
     def on_message(self, ws, message):
         message = json.loads(message)
         params = message["params"]
         for param in params:
-            if "motion_report" in param:
-                live_position = param["motion_report"].get("live_position", None)
-                if live_position is not None:
-                    x, y, z, _ = live_position
-                    if x is not None and "x" in self._homed_axis:
-                        if self._last_position["x"] is not None:
-                            self._odom["x"] += abs(x - self._last_position["x"])
-                        self._last_position["x"] = x
-                    if y is not None and "y" in self._homed_axis:
-                        if self._last_position["y"] is not None:
-                            self._odom["y"] += abs(y - self._last_position["y"])
-                        self._last_position["y"] = y
-                    if z is not None and "z" in self._homed_axis:
-                        if self._last_position["z"] is not None:
-                            self._odom["z"] += abs(z - self._last_position["z"])
-                        self._last_position["z"] = z
-                self._messages_counter += 1
-                if self._messages_counter % self._update_interval == 0:
-                    motion_minder.set_odometer(
-                        f"http://{_MOONRAKER_URL}", _NAMESPACE,
-                        self._odom["x"], self._odom["y"], self._odom["z"]
-                    )
-            if "toolhead" in param:
-                homed_axes = param["toolhead"].get("homed_axes", None)
-                if homed_axes is not None:
-                    self._homed_axis = homed_axes
-            if "klipper" in param:
-                klipper = param["klipper"]
-                state = klipper.get("active_state", None)
-                if state is not None and state == "inactive":
-                    self._subscribed = False
-        print(self._odom, self._homed_axis)
+            self._process_motion_report(param)
+            self._process_toolhead(param)
+            self._process_klipper_state(param)
+
     def subscribe(self, websock):
         subscribe_objects = {
             "motion_report": None,
