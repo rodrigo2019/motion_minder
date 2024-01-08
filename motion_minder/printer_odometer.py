@@ -3,6 +3,8 @@ import requests
 import random
 import json
 import motion_minder
+import time
+from threading import Thread
 
 _MOONRAKER_URL = "127.0.0.1:7125"
 _NAMESPACE = "motion_minder"
@@ -17,12 +19,32 @@ class PrinterOdometer:
         self._last_position = {"x": None, "y": None, "z": None}
         self._messages_counter = 0
         self._update_interval = update_interval
+        self._subscribed = False
+
+        self._state_thread = Thread(target=self.check_klipper_state_routine)
+        self._state_thread.daemon = True
+        self._state_thread.start()
+
         self.websocket = websocket.WebSocketApp(
             f"ws://{_MOONRAKER_URL}/websocket",
             on_message=self.on_message,
             on_open=self.on_open,
         )
         self.websocket.run_forever(reconnect=5)
+
+    def check_klipper_state_routine(self):
+        while True:
+            if not self._subscribed:
+                try:
+                    klipper_state = requests.get(f"http://{_MOONRAKER_URL}/server/info")
+                    if 200 <= klipper_state.status_code < 300:
+                        klipper_state = klipper_state.json()["result"]["klippy_state"]
+                        if klipper_state == "ready":
+                            self.subscribe(self.websocket)
+                            self._subscribed = True
+                except:
+                    pass
+            time.sleep(2)
 
     def on_message(self, ws, message):
         message = json.loads(message)
@@ -51,7 +73,11 @@ class PrinterOdometer:
                         f"http://{_MOONRAKER_URL}", _NAMESPACE,
                         self._odom["x"], self._odom["y"], self._odom["z"]
                     )
-                break
+            elif "klipper" in param:
+                klipper = param["klipper"]
+                state = klipper.get("active_state", None)
+                if state is not None and state == "inactive":
+                    self._subscribed = False
 
     def subscribe(self, websock):
         subscribe_objects = {
