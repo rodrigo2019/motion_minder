@@ -1,10 +1,12 @@
-import websocket
-import requests
-import random
 import json
-import motion_minder
+import random
 import time
 from threading import Thread
+
+import requests
+import websocket
+
+import motion_minder
 
 _MOONRAKER_URL = "127.0.0.1:7125"
 _NAMESPACE = "motion_minder"
