@@ -114,10 +114,13 @@ EOF
   if grep -Fxq "MotionMinder" "${MOONRAKER_MANAGED_SERVICES_FILE}"; then
     printf "[INSTALL] MotionMinder already present in Moonraker managed services. Continuing...\n"
   else
-    # If not present, add the string to the file as a new line
+    if [ -s "${MOONRAKER_MANAGED_SERVICES_FILE}" ]; then
+        # If not present, add the string to the file as a new line
+        echo "" >> "${MOONRAKER_MANAGED_SERVICES_FILE}"
+    fi
     echo "MotionMinder" >> "${MOONRAKER_MANAGED_SERVICES_FILE}"
     printf "[INSTALL] MotionMinder added to Moonraker managed services!\n"
-fi
+  fi
 }
 
 function restart_klipper {
