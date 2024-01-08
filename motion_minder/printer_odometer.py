@@ -19,6 +19,7 @@ class PrinterOdometer:
         x, y, z = motion_minder.get_odometer(f"http://{_MOONRAKER_URL}", _NAMESPACE)
         self._odom = {"x": x, "y": y, "z": z}
         self._last_position = {"x": None, "y": None, "z": None}
+        self._homed_axis = ""
         self._messages_counter = 0
         self._update_interval = update_interval
         self._subscribed = False
@@ -56,26 +57,29 @@ class PrinterOdometer:
                 live_position = param["motion_report"].get("live_position", None)
                 if live_position is not None:
                     x, y, z, _ = live_position
-                    if x is not None:
+                    if x is not None and "x" in self._homed_axis:
                         if self._last_position["x"] is not None:
                             self._odom["x"] += abs(x - self._last_position["x"])
                         self._last_position["x"] = x
-                    if y is not None:
+                    if y is not None and "y" in self._homed_axis:
                         if self._last_position["y"] is not None:
                             self._odom["y"] += abs(y - self._last_position["y"])
                         self._last_position["y"] = y
-                    if z is not None:
+                    if z is not None and "z" in self._homed_axis:
                         if self._last_position["z"] is not None:
                             self._odom["z"] += abs(z - self._last_position["z"])
                         self._last_position["z"] = z
-
                 self._messages_counter += 1
                 if self._messages_counter % self._update_interval == 0:
                     motion_minder.set_odometer(
                         f"http://{_MOONRAKER_URL}", _NAMESPACE,
                         self._odom["x"], self._odom["y"], self._odom["z"]
                     )
-            elif "klipper" in param:
+            if "toolhead" in param:
+                homed_axes = param["toolhead"].get("homed_axes", None)
+                if homed_axes is not None:
+                    self._homed_axis = homed_axes
+            if "klipper" in param:
                 klipper = param["klipper"]
                 state = klipper.get("active_state", None)
                 if state is not None and state == "inactive":
@@ -83,7 +87,8 @@ class PrinterOdometer:
 
     def subscribe(self, websock):
         subscribe_objects = {
-            "motion_report": None
+            "motion_report": None,
+            "toolhead": ["homed_axes"],
         }
 
         websock.send(
