@@ -8,7 +8,6 @@ _NAMESPACE = "motion_minder"
 
 
 def _read_gcode(filename, max_extrusion=None):
-    
     valid_commands = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
 
     mode = "absolute"
@@ -60,6 +59,7 @@ def _read_gcode(filename, max_extrusion=None):
 
         return distances["x"], distances["y"], distances["z"]
 
+
 def set_odometer(moonraker_url, namespace, x=None, y=None, z=None):
     base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
 
@@ -87,6 +87,7 @@ def get_odometer(moonraker_url, namespace):
     z = get_odometer_value("odometer_z")
 
     return x, y, z
+
 
 def _update_odometer(x=None, y=None, z=None):
     base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
