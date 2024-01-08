@@ -107,6 +107,7 @@ EOF
 
   ### launching instance
   printf "[INSTALL] Launching MotionMinder instance ...\n"
+  sudo systemctl stop ${MOTION_MINDER_SERVICE}
   sudo systemctl start ${MOTION_MINDER_SERVICE}
 
   # Check if the string is already present in the file on a line by itself
