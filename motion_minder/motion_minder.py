@@ -93,10 +93,10 @@ def _update_odometer(x=None, y=None, z=None):
 
     def update_axis(axis, value):
         if value is not None:
-            ret = requests.get(f"{base_url}&key=curr_value_{axis}")
+            ret = requests.get(f"{base_url}&key=odometer_{axis}")
             curr_value = float(ret.json()["result"]["value"])
             new_value = value + curr_value
-            requests.post(f"{base_url}&key=curr_value_{axis}&value={new_value}")
+            requests.post(f"{base_url}&key=odometer_{axis}&value={new_value}")
 
     update_axis('x', x)
     update_axis('y', y)
