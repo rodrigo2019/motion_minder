@@ -69,7 +69,7 @@ function setup_venv {
 
 function link_extension {
     echo "[INSTALL] Linking scripts to your config directory..."
-
+    mkdir -p ${USER_CONFIG_PATH}/motion_minder
     ln -frsn ${MOTION_MINDER_PATH}/motion_minder/motion_minder.cfg ${USER_CONFIG_PATH}/motion_minder/motion_minder.cfg
 }
 
