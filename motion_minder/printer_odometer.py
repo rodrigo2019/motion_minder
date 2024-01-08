@@ -8,7 +8,7 @@ import websocket
 
 import motion_minder
 
-_MOONRAKER_URL = "127.0.0.1:7125"
+_MOONRAKER_URL = "192.168.100.96:7125"
 _NAMESPACE = "motion_minder"
 
 
@@ -19,7 +19,10 @@ class PrinterOdometer:
         x, y, z = motion_minder.get_odometer(f"http://{_MOONRAKER_URL}", _NAMESPACE)
         self._odom = {"x": x, "y": y, "z": z}
         self._last_position = {"x": None, "y": None, "z": None}
+
         self._homed_axis = ""
+        self._get_homed_axis()
+
         self._messages_counter = 0
         self._update_interval = update_interval
         self._subscribed = False
@@ -34,6 +37,16 @@ class PrinterOdometer:
             on_open=self.on_open,
         )
         self.websocket.run_forever(reconnect=5)
+
+    def _get_homed_axis(self):
+        ret = requests.get(f"http://{_MOONRAKER_URL}/printer/objects/query?toolhead")
+        self._homed_axis = ""
+        try:
+            if 200 <= ret.status_code < 300:
+                self._homed_axis = ret.json().get("result", {}).get("status", {}).\
+                    get("toolhead", {}).get("homed_axes", "")
+        except:
+            pass
 
     def check_klipper_state_routine(self):
         while True:
@@ -84,7 +97,7 @@ class PrinterOdometer:
                 state = klipper.get("active_state", None)
                 if state is not None and state == "inactive":
                     self._subscribed = False
-
+        print(self._odom, self._homed_axis)
     def subscribe(self, websock):
         subscribe_objects = {
             "motion_report": None,
