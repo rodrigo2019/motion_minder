@@ -8,7 +8,7 @@ import websocket
 
 import motion_minder
 
-_MOONRAKER_URL = "127.0.0.1:7125"
+_MOONRAKER_URL = "192.168.100.96:7125"
 _NAMESPACE = "motion_minder"
 
 
@@ -107,9 +107,8 @@ class PrinterOdometer:
         live_position = param["motion_report"].get("live_position", None)
         if live_position is None:
             return
-
-        for axis in ["x", "y", "z"]:
-            value = live_position.get(axis)
+        for i, axis in enumerate(["x", "y", "z"]):
+            value = live_position[i]
             if value is not None and axis in self._homed_axis:
                 self._update_single_axis_odometer(axis, value)
         self._messages_counter += 1
@@ -161,6 +160,7 @@ class PrinterOdometer:
             self._process_motion_report(param)
             self._process_toolhead(param)
             self._process_klipper_state(param)
+        print(self._odom, self._homed_axis)
 
     def subscribe(self, websock):
         """
