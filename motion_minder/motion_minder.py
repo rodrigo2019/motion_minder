@@ -2,8 +2,52 @@ import sys
 
 import requests
 
-_MOONRAKER_URL = "http://127.0.0.1:7125"
-_NAMESPACE = "motion_minder"
+MOONRAKER_ADDRESS = "http://127.0.0.1:7125"
+NAMESPACE = "motion_minder"
+
+
+class MotionMinderMoonrakerDB:
+    def __init__(self, moonraker_address, namespace):
+        self._moonraker_address = moonraker_address
+        self._namespace = namespace
+
+    def get_key_value(self, key):
+        base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
+        response = requests.get(f"{base_url}&key={key}").json()
+        if "error" in response:
+            return None
+        else:
+            return response.get("result", {}).get("value", None)
+
+    def set_key_value(self, key, value):
+        base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
+        response = requests.post(f"{base_url}&key={key}&value={value}").json()
+        if "error" in response:
+            return None
+        else:
+            return response.get("result", {}).get("value", None)
+
+    def set_odometer(self, x=None, y=None, z=None):
+        if x is not None:
+            self.set_key_value("odometer_x", x)
+        if y is not None:
+            self.set_key_value("odometer_y", y)
+        if z is not None:
+            self.set_key_value("odometer_z", z)
+
+    def get_odometer(self):
+        x = self.get_key_value("odometer_x")
+        y = self.get_key_value("odometer_y")
+        z = self.get_key_value("odometer_z")
+        return x, y, z
+
+    def add_mileage(self, x=None, y=None, z=None):
+        for axis, name in zip([x, y, z], ["x", "y", "z"]):
+            if axis is not None:
+                value = self.get_key_value(f"odometer_{name}")
+                if value is not None:
+                    axis += float(value)
+                self.set_key_value(f"odometer_{name}", axis)
 
 
 def _read_gcode(filename, max_extrusion=None):
@@ -59,59 +103,9 @@ def _read_gcode(filename, max_extrusion=None):
         return distances["x"], distances["y"], distances["z"]
 
 
-def set_odometer(moonraker_url, namespace, x=None, y=None, z=None):
-    base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
-
-    def update_axis(axis, value):
-        if value is not None:
-            requests.post(f"{base_url}&key=odometer_{axis}&value={value}")
-
-    update_axis('x', x)
-    update_axis('y', y)
-    update_axis('z', z)
-
-
-def get_key_value(moonraker_url, namespace, key):
-    base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
-    response = requests.get(f"{base_url}&key={key}").json()
-    if "error" in response:
-        return 0
-    else:
-        return float(response.get("result", {}).get("value", 0))
-
-
-def get_odometer(moonraker_url, namespace):
-    x = get_key_value(moonraker_url, namespace, "odometer_x")
-    y = get_key_value(moonraker_url, namespace, "odometer_y")
-    z = get_key_value(moonraker_url, namespace, "odometer_z")
-
-    return x, y, z
-
-
-def _update_odometer(x=None, y=None, z=None):
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
-
-    def update_axis(axis, value):
-        if value is not None:
-            ret = requests.get(f"{base_url}&key=odometer_{axis}")
-            curr_value = float(ret.json()["result"]["value"])
-            new_value = value + curr_value
-            requests.post(f"{base_url}&key=odometer_{axis}&value={new_value}")
-
-    update_axis('x', x)
-    update_axis('y', y)
-    update_axis('z', z)
-
-
-def _process_gcode(filename):
-    x, y, z = _read_gcode(filename)
-    _update_odometer(x, y, z)
-    _query_db()
-
-
-def _process_history(gcode_folder):
-    n_jobs = requests.get(f"{_MOONRAKER_URL}/server/history/list?limit=1").json()["result"]["count"]
-    jobs = requests.get(f"{_MOONRAKER_URL}/server/history/list?limit={n_jobs}").json()["result"]["jobs"]
+def _process_history(gcode_folder, mm):
+    n_jobs = requests.get(f"{MOONRAKER_ADDRESS}/server/history/list?limit=1").json()["result"]["count"]
+    jobs = requests.get(f"{MOONRAKER_ADDRESS}/server/history/list?limit={n_jobs}").json()["result"]["jobs"]
 
     total_x = 0
     total_y = 0
@@ -129,33 +123,26 @@ def _process_history(gcode_folder):
         total_y += y
         total_z += z
 
-    _update_odometer(total_x, total_y, total_z)
-    _query_db()
+    mm.add_mileage(x=total_x, y=total_y, z=total_z)
+    _query_db(mm)
 
 
-def _reset_db(initial_km):
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
-
-    # Reset init_value
-    init_value_url = f"{base_url}&key=init_value&value={initial_km * 1000 * 1000}"
-    requests.post(init_value_url)
+def _reset_db(initial_km, mm):
+    mm.set_key_value("init_value", initial_km * 1000 * 1000)
 
     print(f"Database reset to: {initial_km} km")
 
-    x, y, z = get_odometer(_MOONRAKER_URL, _NAMESPACE)
+    x, y, z = mm.get_odometer()
 
     for axis, value in zip(["x", "y", "z"], [x, y, z]):
-        url = f"{base_url}&key=odometer_on_reset_{axis}&value={value}"
-        requests.post(url)
+        mm.set_key_value(f"odometer_on_reset_{axis}", value)
 
 
-def _query_db():
-    base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
+def _query_db(mm):
+    base_url = f"{MOONRAKER_ADDRESS}/server/database/item?namespace={NAMESPACE}"
 
     def get_and_convert_value(key):
-        url = f"{base_url}&key={key}"
-        ret = requests.get(url)
-        value = float(ret.json()["result"]["value"])
+        value = float(mm.get_key_value(key))
         return value / 1000 / 1000
 
     try:
@@ -181,22 +168,23 @@ def _query_db():
 
 def main():
     arg = sys.argv[1].lower()
+    mm = MotionMinderMoonrakerDB(MOONRAKER_ADDRESS, NAMESPACE)
     if arg == "init_km":
         initial_km_ = float(sys.argv[2])
-        _reset_db(initial_km_)
+        _reset_db(initial_km_, mm)
     elif arg == "reset":
         axis = sys.argv[2].lower()
         if axis not in ["x", "y", "z"]:
             raise ValueError("Axis must be X, Y or Z")
-        set_odometer(_MOONRAKER_URL, _NAMESPACE, **{axis: 0})
+        mm.set_odometer(**{axis: 0})
         print(f"Odometer for axis {axis} reset to 0")
     elif arg == "query":
-        _query_db()
+        _query_db(mm)
     elif arg == "process_history":
-        ret = requests.get(f"{_MOONRAKER_URL}/server/files/roots")
+        ret = requests.get(f"{MOONRAKER_ADDRESS}/server/files/roots")
         folders = ret.json()["result"]
         gcode_folder_ = [folder for folder in folders if folder["name"] == "gcodes"][0]["path"]
-        _process_history(gcode_folder_)
+        _process_history(gcode_folder_, mm)
 
 
 if __name__ == "__main__":

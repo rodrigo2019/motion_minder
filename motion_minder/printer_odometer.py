@@ -8,24 +8,23 @@ import websocket
 
 import motion_minder
 
-_MOONRAKER_URL = "127.0.0.1:7125"
-_NAMESPACE = "motion_minder"
-
 
 class PrinterOdometer:
     """
     This class is responsible for calculating the printer's odometer.
     """
 
-    def __init__(self, update_interval: int = 20) -> None:
+    def __init__(self, moonraker_address, update_interval: int = 20, **kwargs) -> None:
         """
 
         :param update_interval: The interval in messages between each odometer update.
         """
+        self._moonraker_db = motion_minder.MotionMinderMoonrakerDB(moonraker_address=moonraker_address,
+                                                                   namespace=kwargs.get("namespace", "motion_minder"))
+        self._moonraker_address = moonraker_address
         self._id = random.randint(0, 10000)
 
-        x, y, z = motion_minder.get_odometer(f"http://{_MOONRAKER_URL}", _NAMESPACE)
-        self._odom = {"x": x, "y": y, "z": z}
+        self._diff_dist = {"x": 0, "y": 0, "z": 0}
         self._last_position = {"x": None, "y": None, "z": None}
 
         self._homed_axis = ""
@@ -40,7 +39,7 @@ class PrinterOdometer:
         self._state_thread.start()
 
         self.websocket = websocket.WebSocketApp(
-            f"ws://{_MOONRAKER_URL}/websocket",
+            f"ws://{self._moonraker_address}/websocket",
             on_message=self.on_message,
             on_open=self.on_open,
         )
@@ -52,7 +51,7 @@ class PrinterOdometer:
 
         :return:
         """
-        ret = requests.get(f"http://{_MOONRAKER_URL}/printer/objects/query?toolhead")
+        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?toolhead")
         self._homed_axis = ""
         try:
             if 200 <= ret.status_code < 300:
@@ -71,7 +70,7 @@ class PrinterOdometer:
         while True:
             if not self._subscribed:
                 try:
-                    klipper_state = requests.get(f"http://{_MOONRAKER_URL}/server/info")
+                    klipper_state = requests.get(f"http://{self._moonraker_address}/server/info")
                     if 200 <= klipper_state.status_code < 300:
                         klipper_state = klipper_state.json()["result"]["klippy_state"]
                         if klipper_state == "ready":
@@ -91,7 +90,7 @@ class PrinterOdometer:
         :return:
         """
         if self._last_position[axis] is not None:
-            self._odom[axis] += abs(value - self._last_position[axis])
+            self._diff_dist[axis] += abs(value - self._last_position[axis])
         self._last_position[axis] = value
 
     def _process_motion_report(self, param: dict) -> None:
@@ -114,10 +113,8 @@ class PrinterOdometer:
         self._messages_counter += 1
 
         if self._messages_counter % self._update_interval == 0:
-            motion_minder.set_odometer(
-                f"http://{_MOONRAKER_URL}", _NAMESPACE,
-                self._odom["x"], self._odom["y"], self._odom["z"]
-            )
+            self._moonraker_db.add_mileage(**self._diff_dist)
+            self._diff_dist = {"x": 0, "y": 0, "z": 0}
 
     def _process_toolhead(self, param):
         """
@@ -195,4 +192,4 @@ class PrinterOdometer:
 
 
 if __name__ == "__main__":
-    p = PrinterOdometer()
+    p = PrinterOdometer(moonraker_address=motion_minder.MOONRAKER_ADDRESS, namespace=motion_minder.NAMESPACE)
