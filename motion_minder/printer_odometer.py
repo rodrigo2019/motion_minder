@@ -160,7 +160,6 @@ class PrinterOdometer:
             self._process_motion_report(param)
             self._process_toolhead(param)
             self._process_klipper_state(param)
-        print(self._odom, self._homed_axis)
 
     def subscribe(self, websock):
         """
