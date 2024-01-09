@@ -27,6 +27,35 @@ class MoonrakerInterface:
         else:
             return response.get("result", {}).get("value", None)
 
+    def get_roots(self):
+        endpoint = f"http://{self._moonraker_address}/server/files/roots"
+        response = requests.get(f"{endpoint}").json()
+        if "error" in response:
+            return {}
+        else:
+            folders_list = response.get("result", [])
+            folders = {}
+            for folder in folders_list:
+                folders[folder["name"]] = folder
+                folders[folder["name"]].pop("name")
+            return folders
+
+    def get_homed_axis(self) -> str:
+        """
+        Get the homed axis from the printer.
+
+        :return:
+        """
+        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?toolhead")
+        homed_axis = ""
+        try:
+            if 200 <= ret.status_code < 300:
+                homed_axis = ret.json().get("result", {}).get("status", {}). \
+                    get("toolhead", {}).get("homed_axes", "")
+        except:
+            pass
+        return homed_axis
+
 
 class MotionMinder(MoonrakerInterface):
     def __init__(self, **kwargs):
@@ -186,9 +215,9 @@ def main():
     elif arg == "query":
         _query_db(mm)
     elif arg == "process_history":
-        ret = requests.get(f"{MOONRAKER_ADDRESS}/server/files/roots")
-        folders = ret.json()["result"]
-        gcode_folder_ = [folder for folder in folders if folder["name"] == "gcodes"][0]["path"]
+        gcode_folder_ = mm.get_roots().get("gcodes", None)
+        if gcode_folder_ is None:
+            raise ValueError("Gcode folder not set. Please set it in your moonraker config")
         _process_history(gcode_folder_, mm)
 
 

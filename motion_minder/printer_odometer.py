@@ -26,9 +26,7 @@ class PrinterOdometer:
 
         self._diff_dist = {"x": 0, "y": 0, "z": 0}
         self._last_position = {"x": None, "y": None, "z": None}
-
-        self._homed_axis = ""
-        self._get_homed_axis()
+        self._homed_axis = self._moonraker_db.get_homed_axis()
 
         self._messages_counter = 0
         self._update_interval = update_interval
@@ -44,21 +42,6 @@ class PrinterOdometer:
             on_open=self.on_open,
         )
         self.websocket.run_forever(reconnect=5)
-
-    def _get_homed_axis(self) -> None:
-        """
-        Get the homed axis from the printer.
-
-        :return:
-        """
-        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?toolhead")
-        self._homed_axis = ""
-        try:
-            if 200 <= ret.status_code < 300:
-                self._homed_axis = ret.json().get("result", {}).get("status", {}). \
-                    get("toolhead", {}).get("homed_axes", "")
-        except:
-            pass
 
     def check_klipper_state_routine(self) -> None:
         """
