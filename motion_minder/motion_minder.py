@@ -71,19 +71,19 @@ def set_odometer(moonraker_url, namespace, x=None, y=None, z=None):
     update_axis('z', z)
 
 
-def get_odometer(moonraker_url, namespace):
-    def get_odometer_value(key):
-        response = requests.get(f"{base_url}&key={key}").json()
-        if "error" in response:
-            return 0
-        else:
-            return float(response.get("result", {}).get("value", 0))
-
+def get_key_value(moonraker_url, namespace, key):
     base_url = f"{moonraker_url}/server/database/item?namespace={namespace}"
+    response = requests.get(f"{base_url}&key={key}").json()
+    if "error" in response:
+        return 0
+    else:
+        return float(response.get("result", {}).get("value", 0))
 
-    x = get_odometer_value("odometer_x")
-    y = get_odometer_value("odometer_y")
-    z = get_odometer_value("odometer_z")
+
+def get_odometer(moonraker_url, namespace):
+    x = get_key_value(moonraker_url, namespace, "odometer_x")
+    y = get_key_value(moonraker_url, namespace, "odometer_y")
+    z = get_key_value(moonraker_url, namespace, "odometer_z")
 
     return x, y, z
 
@@ -142,6 +142,12 @@ def _reset_db(initial_km):
 
     print(f"Database reset to: {initial_km} km")
 
+    x, y, z = get_odometer(_MOONRAKER_URL, _NAMESPACE)
+
+    for axis, value in zip(["x", "y", "z"], [x, y, z]):
+        url = f"{base_url}&key=odometer_on_reset_{axis}&value={value}"
+        requests.post(url)
+
 
 def _query_db():
     base_url = f"{_MOONRAKER_URL}/server/database/item?namespace={_NAMESPACE}"
@@ -154,6 +160,9 @@ def _query_db():
 
     try:
         init_value = get_and_convert_value("init_value")
+        value_on_reset_x = get_and_convert_value("odometer_on_reset_x")
+        value_on_reset_y = get_and_convert_value("odometer_on_reset_y")
+        value_on_reset_z = get_and_convert_value("odometer_on_reset_z")
         curr_value_x = get_and_convert_value("odometer_x")
         curr_value_y = get_and_convert_value("odometer_y")
         curr_value_z = get_and_convert_value("odometer_z")
@@ -161,17 +170,16 @@ def _query_db():
         print("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
         return
 
-    health_x = (init_value - curr_value_x) / init_value
-    health_y = (init_value - curr_value_y) / init_value
-    health_z = (init_value - curr_value_z) / init_value
+    health_x = (init_value - (curr_value_x - value_on_reset_x)) / init_value
+    health_y = (init_value - (curr_value_y - value_on_reset_y)) / init_value
+    health_z = (init_value - (curr_value_z - value_on_reset_z)) / init_value
 
     print(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
     print(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
     print(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
 
 
-if __name__ == "__main__":
-
+def main():
     arg = sys.argv[1].lower()
     if arg == "init_km":
         initial_km_ = float(sys.argv[2])
@@ -189,3 +197,7 @@ if __name__ == "__main__":
         folders = ret.json()["result"]
         gcode_folder_ = [folder for folder in folders if folder["name"] == "gcodes"][0]["path"]
         _process_history(gcode_folder_)
+
+
+if __name__ == "__main__":
+    main()
