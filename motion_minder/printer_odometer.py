@@ -19,8 +19,8 @@ class PrinterOdometer:
 
         :param update_interval: The interval in messages between each odometer update.
         """
-        self._moonraker_db = motion_minder.MotionMinderMoonrakerDB(moonraker_address=moonraker_address,
-                                                                   namespace=kwargs.get("namespace", "motion_minder"))
+        self._moonraker_db = motion_minder.MotionMinder(moonraker_address=moonraker_address,
+                                                        namespace=kwargs.get("namespace", "motion_minder"))
         self._moonraker_address = moonraker_address
         self._id = random.randint(0, 10000)
 

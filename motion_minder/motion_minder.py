@@ -6,7 +6,7 @@ MOONRAKER_ADDRESS = "http://127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
 
-class MotionMinderMoonrakerDB:
+class MoonrakerInterface:
     def __init__(self, moonraker_address, namespace):
         self._moonraker_address = moonraker_address
         self._namespace = namespace
@@ -26,6 +26,11 @@ class MotionMinderMoonrakerDB:
             return None
         else:
             return response.get("result", {}).get("value", None)
+
+
+class MotionMinder(MoonrakerInterface):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def set_odometer(self, x=None, y=None, z=None):
         if x is not None:
@@ -168,7 +173,7 @@ def _query_db(mm):
 
 def main():
     arg = sys.argv[1].lower()
-    mm = MotionMinderMoonrakerDB(MOONRAKER_ADDRESS, NAMESPACE)
+    mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if arg == "init_km":
         initial_km_ = float(sys.argv[2])
         _reset_db(initial_km_, mm)
