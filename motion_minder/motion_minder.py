@@ -74,7 +74,7 @@ class MotionMinder(MoonrakerInterface):
 
     def _setup_logger(self):
         self._logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(message)s')
+        formatter = logging.Formatter('[%(levelname)s] %(message)s')
         sh = logging.StreamHandler(sys.stdout)
         sh.setLevel(logging.DEBUG)
         sh.setFormatter(formatter)
