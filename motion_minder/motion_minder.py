@@ -1,3 +1,5 @@
+import logging
+import os
 import sys
 
 import requests
@@ -56,10 +58,36 @@ class MoonrakerInterface:
             pass
         return homed_axis
 
+    def get_jobs_history(self, limit=None):
+        if limit is None:
+            limit = requests.get(f"{self._moonraker_address}/server/history/list?limit=1").json()["result"]["count"]
+        jobs = requests.get(f"{self._moonraker_address}/server/history/list?limit={limit}").json()["result"]["jobs"]
+        return jobs
+
 
 class MotionMinder(MoonrakerInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        self._logger = logging.getLogger("motion_minder")
+        self._setup_logger()
+
+    def _setup_logger(self):
+        self._logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(message)s')
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setLevel(logging.DEBUG)
+        sh.setFormatter(formatter)
+        self._logger.addHandler(sh)
+
+        logs_folder = self.get_roots().get("logs", {}).get("path", None)
+        if logs_folder is not None:
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
+                                                      maxBytes=5 * 1024, backupCount=5)
+            rh.setLevel(logging.DEBUG)
+            rh.setFormatter(formatter)
+            self._logger.addHandler(rh)
 
     def set_odometer(self, x=None, y=None, z=None):
         if x is not None:
@@ -82,6 +110,10 @@ class MotionMinder(MoonrakerInterface):
                 if value is not None:
                     axis += float(value)
                 self.set_key_value(f"odometer_{name}", axis)
+
+    @property
+    def logger(self):
+        return self._logger
 
 
 def _read_gcode(filename, max_extrusion=None):
@@ -138,9 +170,7 @@ def _read_gcode(filename, max_extrusion=None):
 
 
 def _process_history(gcode_folder, mm):
-    n_jobs = requests.get(f"{MOONRAKER_ADDRESS}/server/history/list?limit=1").json()["result"]["count"]
-    jobs = requests.get(f"{MOONRAKER_ADDRESS}/server/history/list?limit={n_jobs}").json()["result"]["jobs"]
-
+    jobs = mm.get_jobs_history()
     total_x = 0
     total_y = 0
     total_z = 0
@@ -164,7 +194,7 @@ def _process_history(gcode_folder, mm):
 def _reset_db(initial_km, mm):
     mm.set_key_value("init_value", initial_km * 1000 * 1000)
 
-    print(f"Database reset to: {initial_km} km")
+    mm.logger.info(f"Database reset to: {initial_km} km")
 
     x, y, z = mm.get_odometer()
 
@@ -173,8 +203,6 @@ def _reset_db(initial_km, mm):
 
 
 def _query_db(mm):
-    base_url = f"{MOONRAKER_ADDRESS}/server/database/item?namespace={NAMESPACE}"
-
     def get_and_convert_value(key):
         value = float(mm.get_key_value(key))
         return value / 1000 / 1000
@@ -188,16 +216,16 @@ def _query_db(mm):
         curr_value_y = get_and_convert_value("odometer_y")
         curr_value_z = get_and_convert_value("odometer_z")
     except:
-        print("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
+        mm.logger.error("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
         return
 
     health_x = (init_value - (curr_value_x - value_on_reset_x)) / init_value
     health_y = (init_value - (curr_value_y - value_on_reset_y)) / init_value
     health_z = (init_value - (curr_value_z - value_on_reset_z)) / init_value
 
-    print(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
-    print(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
-    print(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
+    mm.logger.info(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
+    mm.logger.info(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
+    mm.logger.info(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
 
 
 def main():
@@ -211,13 +239,14 @@ def main():
         if axis not in ["x", "y", "z"]:
             raise ValueError("Axis must be X, Y or Z")
         mm.set_odometer(**{axis: 0})
-        print(f"Odometer for axis {axis} reset to 0")
+        mm.logger.info(f"Odometer for axis {axis} reset to 0")
     elif arg == "query":
         _query_db(mm)
     elif arg == "process_history":
         gcode_folder_ = mm.get_roots().get("gcodes", None)
         if gcode_folder_ is None:
-            raise ValueError("Gcode folder not set. Please set it in your moonraker config")
+            mm.logger.error("Gcode folder not set. Please set it in your moonraker config")
+            exit(-1)
         _process_history(gcode_folder_, mm)
 
 
