@@ -85,8 +85,10 @@ class PrinterOdometer:
         :param message: The message received from the websocket.
         :return:
         """
-        params = message["params"]
+        params = message.get("params", [])
         for param in params:
+            if not isinstance(param, dict):
+                continue
             self._process_motion_report(param)
             self._process_toolhead(param)
 
