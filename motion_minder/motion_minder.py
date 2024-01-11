@@ -177,7 +177,7 @@ class MotionMinder(MoonrakerInterface):
         if logs_folder is not None:
             formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
-                                                      maxBytes=5 * 1024, backupCount=5)
+                                                      maxBytes=5 * 1024 * 1024, backupCount=5)
             rh.setLevel(logging.DEBUG)
             rh.setFormatter(formatter)
             self._logger.addHandler(rh)
