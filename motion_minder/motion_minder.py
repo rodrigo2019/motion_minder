@@ -9,7 +9,7 @@ from threading import Thread
 import requests
 import websocket
 
-MOONRAKER_ADDRESS = "http://127.0.0.1:7125"
+MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
 
