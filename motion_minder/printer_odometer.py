@@ -12,25 +12,27 @@ class PrinterOdometer:
 
         :param update_interval: The interval in messages between each odometer update.
         """
-        self._moonraker_db = motion_minder.MotionMinder(moonraker_address=moonraker_address,
-                                                        namespace=kwargs.get("namespace", "motion_minder"),
-                                                        connect_websocket=True,
-                                                        subscribe_objects={"motion_report": None,
-                                                                           "toolhead": ["homed_axes"]},
-                                                        ws_callbacks=[self.on_message]
-                                                        )
+        self._motion_minder = motion_minder.MotionMinder(moonraker_address=moonraker_address,
+                                                         namespace=kwargs.get("namespace", "motion_minder"),
+                                                         connect_websocket=True,
+                                                         subscribe_objects={"motion_report": None,
+                                                                            "toolhead": ["homed_axes"]},
+                                                         ws_callbacks=[self.on_message]
+                                                         )
         self._moonraker_address = moonraker_address
 
         self._diff_dist = {"x": 0, "y": 0, "z": 0}
         self._last_position = {"x": None, "y": None, "z": None}
 
-        toolhead_stats = self._moonraker_db.get_obj("toolhead")
+        toolhead_stats = self._motion_minder.get_obj("toolhead")
         self._homed_axis = toolhead_stats.get("homed_axes", "")
         self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
         self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
 
         self._messages_counter = 0
         self._update_interval = update_interval
+
+        self._motion_minder.logger.info("Printer odometer initialized.")
 
     def _update_single_axis_odometer(self, axis: str, value: float) -> None:
         """
@@ -65,7 +67,7 @@ class PrinterOdometer:
         self._messages_counter += 1
 
         if self._messages_counter % self._update_interval == 0:
-            self._moonraker_db.add_mileage(**self._diff_dist)
+            self._motion_minder.add_mileage(**self._diff_dist)
             self._diff_dist = {"x": 0, "y": 0, "z": 0}
 
     def _process_toolhead(self, param):
