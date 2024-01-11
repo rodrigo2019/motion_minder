@@ -60,7 +60,7 @@ class PrinterOdometer:
             return
         for i, axis in enumerate(["x", "y", "z"]):
             value = live_position[i]
-            if value is not None and axis in self._homed_axis:
+            if axis in self._homed_axis and self._axis_min[i] <= value <= self._axis_max[i]:
                 self._update_single_axis_odometer(axis, value)
         self._messages_counter += 1
 
