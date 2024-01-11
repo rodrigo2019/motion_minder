@@ -204,7 +204,7 @@ class MotionMinder(MoonrakerInterface):
                 if value is not None:
                     axis_value += float(value)
                 self.set_key_value(f"odometer_{name}", axis_value)
-                current_odometer[name] = axis_value
+                current_odometer[f"odometer_{name}"] = axis_value
         return current_odometer
 
     @property
