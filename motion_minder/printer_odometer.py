@@ -1,4 +1,5 @@
 import motion_minder
+import time
 
 
 class PrinterOdometer:
@@ -92,3 +93,5 @@ class PrinterOdometer:
 
 if __name__ == "__main__":
     p = PrinterOdometer(moonraker_address=motion_minder.MOONRAKER_ADDRESS, namespace=motion_minder.NAMESPACE)
+    while True:
+        time.sleep(60)
