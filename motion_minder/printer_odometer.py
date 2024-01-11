@@ -23,7 +23,11 @@ class PrinterOdometer:
 
         self._diff_dist = {"x": 0, "y": 0, "z": 0}
         self._last_position = {"x": None, "y": None, "z": None}
-        self._homed_axis = self._moonraker_db.get_homed_axis()
+
+        toolhead_stats = self._moonraker_db.get_obj("toolhead")
+        self._homed_axis = toolhead_stats.get("homed_axes", "")
+        self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
+        self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
 
         self._messages_counter = 0
         self._update_interval = update_interval
