@@ -1,11 +1,3 @@
-import json
-import random
-import time
-from threading import Thread
-
-import requests
-import websocket
-
 import motion_minder
 
 
@@ -20,9 +12,13 @@ class PrinterOdometer:
         :param update_interval: The interval in messages between each odometer update.
         """
         self._moonraker_db = motion_minder.MotionMinder(moonraker_address=moonraker_address,
-                                                        namespace=kwargs.get("namespace", "motion_minder"))
+                                                        namespace=kwargs.get("namespace", "motion_minder"),
+                                                        connect_websocket=True,
+                                                        subscribe_objects={"motion_report": None,
+                                                                           "toolhead": ["homed_axes"]},
+                                                        ws_callbacks=[self.on_message]
+                                                        )
         self._moonraker_address = moonraker_address
-        self._id = random.randint(0, 10000)
 
         self._diff_dist = {"x": 0, "y": 0, "z": 0}
         self._last_position = {"x": None, "y": None, "z": None}
@@ -30,38 +26,6 @@ class PrinterOdometer:
 
         self._messages_counter = 0
         self._update_interval = update_interval
-        self._subscribed = False
-
-        self._state_thread = Thread(target=self.check_klipper_state_routine)
-        self._state_thread.daemon = True
-        self._state_thread.start()
-
-        self.websocket = websocket.WebSocketApp(
-            f"ws://{self._moonraker_address}/websocket",
-            on_message=self.on_message,
-            on_open=self.on_open,
-        )
-        self.websocket.run_forever(reconnect=5)
-
-    def check_klipper_state_routine(self) -> None:
-        """
-        Check the klipper state and subscribe to the websocket when it's ready.
-        Always when the Klipper is offline all the websocket subscriptions are lost.
-
-        :return:
-        """
-        while True:
-            if not self._subscribed:
-                try:
-                    klipper_state = requests.get(f"http://{self._moonraker_address}/server/info")
-                    if 200 <= klipper_state.status_code < 300:
-                        klipper_state = klipper_state.json()["result"]["klippy_state"]
-                        if klipper_state == "ready":
-                            self.subscribe(self.websocket)
-                            self._subscribed = True
-                except:
-                    pass
-            time.sleep(2)
 
     def _update_single_axis_odometer(self, axis: str, value: float) -> None:
         """
@@ -112,21 +76,7 @@ class PrinterOdometer:
         if homed_axes is not None:
             self._homed_axis = homed_axes
 
-    def _process_klipper_state(self, param):
-        """
-        Process the klipper state and subscribe to the websocket when it's ready.
-
-        :param param: The message received from the websocket that can contain the klipper state or not.
-        :return:
-        """
-        if not "klipper" in param:
-            return
-        klipper = param["klipper"]
-        state = klipper.get("active_state", None)
-        if state is not None and state == "inactive":
-            self._subscribed = False
-
-    def on_message(self, ws, message) -> None:
+    def on_message(self, message) -> None:
         """
         Process the message received from the websocket.
 
@@ -134,44 +84,10 @@ class PrinterOdometer:
         :param message: The message received from the websocket.
         :return:
         """
-        message = json.loads(message)
         params = message["params"]
         for param in params:
             self._process_motion_report(param)
             self._process_toolhead(param)
-            self._process_klipper_state(param)
-
-    def subscribe(self, websock):
-        """
-        Subscribe to a specific topic from moonraker.
-
-        :param websock: The websocket object.
-        :return:
-        """
-        subscribe_objects = {
-            "motion_report": None,
-            "toolhead": ["homed_axes"],
-        }
-
-        websock.send(
-            json.dumps(
-                {
-                    "jsonrpc": "2.0",
-                    "method": "printer.objects.subscribe",
-                    "params": {"objects": subscribe_objects},
-                    "id": self._id,
-                }
-            )
-        )
-
-    def on_open(self, ws):
-        """
-        Subscribe to the websocket when it's open.
-
-        :param ws: The websocket object.
-        :return:
-        """
-        self.subscribe(ws)
 
 
 if __name__ == "__main__":

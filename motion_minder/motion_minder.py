@@ -1,17 +1,33 @@
+import json
 import logging
 import os
+import random
 import sys
+import time
+from threading import Thread
 
 import requests
+import websocket
 
 MOONRAKER_ADDRESS = "http://127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
 
 class MoonrakerInterface:
-    def __init__(self, moonraker_address, namespace):
+    def __init__(self, moonraker_address, namespace,
+                 connect_websocket=False, subscribe_objects=None, ws_callbacks=None):
         self._moonraker_address = moonraker_address
         self._namespace = namespace
+        self._connect_websocket = connect_websocket
+
+        self._id = random.randint(0, 10000)
+        self._subscribe_objects = {} if subscribe_objects is None else subscribe_objects
+        self._on_message_ws_callbacks = [] if ws_callbacks is None else ws_callbacks
+        self._subscribed = False
+
+        if self._connect_websocket:
+            self._websocket = None
+            self._connect_to_websocket()
 
     def get_key_value(self, key):
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
@@ -63,6 +79,76 @@ class MoonrakerInterface:
             limit = requests.get(f"{self._moonraker_address}/server/history/list?limit=1").json()["result"]["count"]
         jobs = requests.get(f"{self._moonraker_address}/server/history/list?limit={limit}").json()["result"]["jobs"]
         return jobs
+
+    def _check_klipper_state_routine(self) -> None:
+        """
+        Check the klipper state and subscribe to the websocket when it's ready.
+        Always when the Klipper is offline all the websocket subscriptions are lost.
+
+        :return:
+        """
+        while True:
+            if not self._subscribed:
+                try:
+                    klipper_state = requests.get(f"http://{self._moonraker_address}/server/info")
+                    if 200 <= klipper_state.status_code < 300:
+                        klipper_state = klipper_state.json()["result"]["klippy_state"]
+                        if klipper_state == "ready":
+                            self._subscribe(self._subscribe_objects)
+                            self._subscribed = True
+                except:
+                    pass
+            time.sleep(2)
+
+    def _connect_to_websocket(self):
+        self._websocket = websocket.WebSocketApp(
+            f"ws://{self._moonraker_address}/websocket",
+            on_message=self._ws_on_message,
+            on_open=self._ws_on_open,
+        )
+        thread = Thread(target=self._websocket.run_forever, kwargs={"reconnect": True})
+        thread.daemon = True
+        thread.start()
+        # self.websocket.run_forever(reconnect=5)
+
+        state_thread = Thread(target=self._check_klipper_state_routine)
+        state_thread.daemon = True
+        state_thread.start()
+
+    def _subscribe(self, subscribe_objects):
+
+        self._websocket.send(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "printer.objects.subscribe",
+                    "params": {"objects": subscribe_objects},
+                    "id": self._id,
+                }
+            )
+        )
+
+    def _process_klipper_state(self, param):
+        """
+        Process the klipper state and subscribe to the websocket when it's ready.
+
+        :param param: The message received from the websocket that can contain the klipper state or not.
+        :return:
+        """
+        if not "klipper" in param:
+            return
+        klipper = param["klipper"]
+        state = klipper.get("active_state", None)
+        if state is not None and state == "inactive":
+            self._subscribed = False
+
+    def _ws_on_message(self, _, message):
+        for callback in self._on_message_ws_callbacks:
+            callback(message)
+
+    def _ws_on_open(self, ws):
+        if len(self._subscribe_objects) > 0:
+            self._subscribe(self._subscribe_objects)
 
 
 class MotionMinder(MoonrakerInterface):
