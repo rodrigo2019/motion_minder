@@ -70,8 +70,10 @@ class MoonrakerInterface:
             if 200 <= ret.status_code < 300:
                 homed_axis = ret.json().get("result", {}).get("status", {}). \
                     get("toolhead", {}).get("homed_axes", "")
-        except:
-            pass
+            else:
+                logging.error(f"Error getting the homed axis: {ret.status_code}")
+        except Exception as e:
+            logging.error(f"Error getting the homed axis: {e}", exc_info=True)
         return homed_axis
 
     def get_jobs_history(self, limit=None):
@@ -96,8 +98,10 @@ class MoonrakerInterface:
                         if klipper_state == "ready":
                             self._subscribe(self._subscribe_objects)
                             self._subscribed = True
-                except:
-                    pass
+                    else:
+                        logging.error(f"Error checking the klipper state: {klipper_state.status_code}")
+                except Exception as e:
+                    logging.error(f"Error checking the klipper state: {e}", exc_info=True)
             time.sleep(2)
 
     def _connect_to_websocket(self):
