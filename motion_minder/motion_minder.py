@@ -145,8 +145,12 @@ class MoonrakerInterface:
             self._subscribed = False
 
     def _ws_on_message(self, _, message):
+        message = json.loads(message)
         for callback in self._on_message_ws_callbacks:
-            callback(message)
+            try:
+                callback(message)
+            except Exception as e:
+                logging.error(f"Error in the callback: {e}", exc_info=True)
 
     def _ws_on_open(self, ws):
         if len(self._subscribe_objects) > 0:
