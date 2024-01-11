@@ -67,8 +67,8 @@ class PrinterOdometer:
         self._messages_counter += 1
 
         if self._messages_counter % self._update_interval == 0:
-            self._motion_minder.add_mileage(**self._diff_dist)
-            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist}")
+            current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
+            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
             self._diff_dist = {"x": 0, "y": 0, "z": 0}
 
     def _process_toolhead(self, param):

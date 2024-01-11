@@ -197,12 +197,15 @@ class MotionMinder(MoonrakerInterface):
         return x, y, z
 
     def add_mileage(self, x=None, y=None, z=None):
-        for axis, name in zip([x, y, z], ["x", "y", "z"]):
-            if axis is not None:
+        current_odometer = {}
+        for axis_value, name in zip([x, y, z], ["x", "y", "z"]):
+            if axis_value is not None:
                 value = self.get_key_value(f"odometer_{name}")
                 if value is not None:
-                    axis += float(value)
-                self.set_key_value(f"odometer_{name}", axis)
+                    axis_value += float(value)
+                self.set_key_value(f"odometer_{name}", axis_value)
+                current_odometer[name] = axis_value
+        return current_odometer
 
     @property
     def logger(self):
