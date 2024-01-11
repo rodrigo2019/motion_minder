@@ -58,23 +58,21 @@ class MoonrakerInterface:
                 folders[folder["name"]].pop("name")
             return folders
 
-    def get_homed_axis(self) -> str:
+    def get_obj(self, obj: str) -> dict:
         """
         Get the homed axis from the printer.
 
         :return:
         """
         ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?toolhead")
-        homed_axis = ""
         try:
             if 200 <= ret.status_code < 300:
-                homed_axis = ret.json().get("result", {}).get("status", {}). \
-                    get("toolhead", {}).get("homed_axes", "")
+                return ret.json().get("result", {}).get("status", {}).get(obj, {})
             else:
                 logging.error(f"Error getting the homed axis: {ret.status_code}")
         except Exception as e:
             logging.error(f"Error getting the homed axis: {e}", exc_info=True)
-        return homed_axis
+        return {}
 
     def get_jobs_history(self, limit=None):
         if limit is None:
