@@ -138,11 +138,10 @@ class MoonrakerInterface:
         :param param: The message received from the websocket that can contain the klipper state or not.
         :return:
         """
-        if not "klipper" in param:
+        if not "method" in param:
             return
-        klipper = param["klipper"]
-        state = klipper.get("active_state", None)
-        if state is not None and state == "inactive":
+        state = param.get("method", None)
+        if state is not None and state == "notify_klippy_disconnected":
             self._subscribed = False
 
     def _ws_on_message(self, _, message):
