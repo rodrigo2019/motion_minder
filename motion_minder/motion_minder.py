@@ -138,7 +138,7 @@ class MoonrakerInterface:
         :param param: The message received from the websocket that can contain the klipper state or not.
         :return:
         """
-        if not "method" in param:
+        if "method" not in param:
             return
         state = param.get("method", None)
         if state is not None and state == "notify_klippy_disconnected":
