@@ -76,7 +76,7 @@ function link_extension {
 function link_gcodeshellcommandpy {
     if [ ! -f "${KLIPPER_PATH}/klippy/extras/gcode_shell_command.py" ]; then
         echo "[INSTALL] Downloading gcode_shell_command.py Klipper extension needed for this module"
-        wget -P ${KLIPPER_PATH}/klippy/extras https://raw.githubusercontent.com/Frix-x/klippain/main/scripts/gcode_shell_command.py
+        wget -P ${KLIPPER_PATH}/klippy/extras https://raw.githubusercontent.com/rodrigo2019/motion_minder/main/scripts/gcode_shell_command.py
     else
         printf "[INSTALL] gcode_shell_command.py Klipper extension is already installed. Continuing...\n\n"
     fi
