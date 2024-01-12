@@ -151,6 +151,7 @@ class MoonrakerInterface:
                 callback(message)
             except Exception as e:
                 logging.error(f"Error in the callback: {e}", exc_info=True)
+        self._process_klipper_state(message)
 
     def _ws_on_open(self, ws):
         if len(self._subscribe_objects) > 0:
