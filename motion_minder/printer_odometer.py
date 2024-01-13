@@ -187,7 +187,7 @@ class PrinterOdometer:
         distances = self._printing_file.read(file_position=file_position)
         distances.pop("e", None)
         for axis, value in distances.items():
-            self._update_single_axis_odometer(axis, value)
+            self._diff_dist[axis] += value
 
     def on_message(self, message) -> None:
         """
