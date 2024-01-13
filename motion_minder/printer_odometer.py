@@ -120,7 +120,7 @@ class PrinterOdometer:
             self._diff_dist[axis] += abs(value - self._last_position[axis])
         self._last_position[axis] = value
 
-    def _check_update_db_odometer(self):
+    def _check_update_db_odometer(self, _):
         if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
             current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
             self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
