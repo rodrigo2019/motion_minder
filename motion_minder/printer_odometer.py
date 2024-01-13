@@ -185,7 +185,7 @@ class PrinterOdometer:
             self._printing_file = GCodeReader(file_path)
             if self._printing_file is not None:
                 self._motion_minder.logger.info("Found a running file, starting to read it.")
-        file_position = param["virtual_sdcard"].get("file_position", 0)
+        file_position = param["virtual_sdcard"].get("file_position", -1)
         distances = self._printing_file.read(file_position=file_position)
         distances.pop("e", None)
         for axis, value in distances.items():
