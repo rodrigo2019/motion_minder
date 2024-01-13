@@ -65,7 +65,7 @@ class MoonrakerInterface:
 
         :return:
         """
-        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?toolhead")
+        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?{obj}")
         try:
             if 200 <= ret.status_code < 300:
                 return ret.json().get("result", {}).get("status", {}).get(obj, {})
