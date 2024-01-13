@@ -179,8 +179,10 @@ class PrinterOdometer:
             if self._printing_file is not None:
                 self._motion_minder.logger.info("Found a new file, starting to read it.")
         elif self._printing_file is None:
-            virtual_sdcard = self._motion_minder.get_obj("virtual_sdcard")
-            self._printing_file = GCodeReader(virtual_sdcard.get("file_path", None))
+            file_path = self._motion_minder.get_obj("virtual_sdcard").get("file_path", None)
+            if file_path is None:
+                return
+            self._printing_file = GCodeReader(file_path)
             if self._printing_file is not None:
                 self._motion_minder.logger.info("Found a running file, starting to read it.")
         file_position = param["virtual_sdcard"].get("file_position", 0)
