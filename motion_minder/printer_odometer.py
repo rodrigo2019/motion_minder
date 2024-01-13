@@ -1,5 +1,6 @@
-import motion_minder
 import time
+
+import motion_minder
 
 
 class GCodeReader:
