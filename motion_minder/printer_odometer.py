@@ -169,7 +169,9 @@ class PrinterOdometer:
                 self._printing_file.close()
                 self._printing_file = None
                 self._motion_minder.logger.info("Done printing, closing file.")
-        file_path = param["virtual_sdcard"].get("filepath", None)
+                return
+
+        file_path = param["virtual_sdcard"].get("file_path", None)
         if self._printing_file is None and file_path is not None:
             self._printing_file = GCodeReader(file_path)
         elif self._printing_file is None:
