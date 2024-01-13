@@ -120,6 +120,13 @@ class PrinterOdometer:
             self._diff_dist[axis] += abs(value - self._last_position[axis])
         self._last_position[axis] = value
 
+    def _check_update_db_odometer(self):
+        if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
+            current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
+            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
+            self._diff_dist = {"x": 0, "y": 0, "z": 0}
+            self._last_update = time.time()
+
     def _process_motion_report(self, param: dict) -> None:
         """
         Process the motion report and update the odometer.
@@ -139,12 +146,6 @@ class PrinterOdometer:
             value = live_position[i]
             if axis in self._homed_axis and self._axis_min[i] <= value <= self._axis_max[i]:
                 self._update_single_axis_odometer(axis, value)
-
-        if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
-            current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
-            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
-            self._diff_dist = {"x": 0, "y": 0, "z": 0}
-            self._last_update = time.time()
 
     def _process_toolhead(self, param):
         """
@@ -181,11 +182,6 @@ class PrinterOdometer:
         distances.pop("e", None)
         for axis, value in distances.items():
             self._update_single_axis_odometer(axis, value)
-        if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
-            current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
-            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
-            self._diff_dist = {"x": 0, "y": 0, "z": 0}
-            self._last_update = time.time()
 
     def on_message(self, message) -> None:
         """
