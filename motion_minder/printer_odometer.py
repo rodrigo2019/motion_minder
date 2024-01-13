@@ -189,13 +189,15 @@ class PrinterOdometer:
         """
         Process the message received from the websocket.
 
-        :param ws: The websocket object.
         :param message: The message received from the websocket.
         :return:
         """
         params = message.get("params", [])
 
-        callbacks = [self._process_motion_report, self._process_toolhead, self._process_virtual_sdcard]
+        callbacks = [self._process_motion_report,
+                     self._process_toolhead,
+                     self._process_virtual_sdcard,
+                     self._check_update_db_odometer]
         for param in params:
             if not isinstance(param, dict):
                 continue
