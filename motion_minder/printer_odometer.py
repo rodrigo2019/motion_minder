@@ -24,6 +24,8 @@ class GCodeReader:
             if file_position is not None and self._file.tell() >= file_position:
                 break
             line = self._file.readline()
+            if not line:
+                break
             command, *values = line.split(" ")
             if command not in GCodeReader._VALID_COMMANDS:
                 continue
