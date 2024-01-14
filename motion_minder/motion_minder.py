@@ -14,6 +14,7 @@ MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
 _logger = logging.getLogger("motion_minder")
+_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter("[%(levelname)s] %(message)s")
 _sh = logging.StreamHandler(sys.stdout)
 _sh.setLevel(logging.DEBUG)
