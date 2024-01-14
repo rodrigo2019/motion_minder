@@ -155,6 +155,14 @@ class PrinterOdometer:
         if "motion_report" not in param or self._printing_file is not None:
             return
 
+        if any(self._axis_max) is None or any(self._axis_min) is None:
+            toolhead_stats = self._motion_minder.get_obj("toolhead")
+            self._homed_axis = toolhead_stats.get("homed_axes", "")
+            self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
+            self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
+            if any(self._axis_max) is None or any(self._axis_min) is None:
+                return
+
         live_position = param["motion_report"].get("live_position", None)
 
         if live_position is None:
