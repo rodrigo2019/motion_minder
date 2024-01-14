@@ -5,82 +5,6 @@ import motion_minder
 _logger = logging.getLogger("motion_minder").getChild("printer_odometer")
 
 
-class GCodeReader:
-    _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
-
-    def __init__(self, file_path):
-        self._file_path = file_path
-        self._file = open(file_path, "r")
-
-        self._mode = "absolute"
-        self._extruder_mode = "absolute"
-
-        self._distances = {"x": 0, "y": 0, "z": 0, "e": 0}
-        self._last_positions = {"x": 0, "y": 0, "z": 0, "e": 0}
-        self._total_distances = {"x": 0, "y": 0, "z": 0, "e": 0}
-
-    def read(self, file_position=None, max_extrusion=None):
-        distances = self._total_distances.copy()
-
-        while True:
-            if file_position is not None and self._file.tell() >= file_position:
-                break
-            line = self._file.readline()
-            if not line:
-                break
-            command, *values = line.split(" ")
-            if command not in GCodeReader._VALID_COMMANDS:
-                continue
-            moves = {}
-            for value in values:
-                try:
-                    moves[value[0]] = float(value[1:])
-                except ValueError:
-                    pass
-
-            if command == "G90":
-                self._mode = "absolute"
-                self._extruder_mode = "absolute"
-            elif command == "G91":
-                self._mode = "relative"
-                self._extruder_mode = "relative"
-            elif command == "M82":
-                self._extruder_mode = "absolute"
-            elif command == "M83":
-                self._extruder_mode = "relative"
-            elif command in ["G1", "G0"]:
-                for axis in ["X", "Y", "Z"]:
-                    if axis in moves:
-                        current_value = moves[axis]
-                        self._total_distances[axis.lower()] += (
-                            abs(current_value - self._last_positions[axis.lower()])
-                            if self._mode == "absolute"
-                            else current_value
-                        )
-                        self._last_positions[axis.lower()] = current_value
-                if "E" in moves:
-                    self._total_distances["e"] = (
-                        abs(moves["E"] - self._last_positions["e"])
-                        if self._extruder_mode == "absolute"
-                        else moves["E"]
-                    )
-                    self._last_positions["e"] = moves["E"]
-            elif command == "G92":
-                for axis in ["X", "Y", "Z", "E"]:
-                    if axis in moves:
-                        self._last_positions[axis.lower()] = moves[axis]
-
-            if max_extrusion is not None and distances["e"] > max_extrusion:
-                break
-        for axis in ["x", "y", "z", "e"]:
-            distances[axis] = self._total_distances[axis] - distances[axis]
-
-        return distances
-
-    def close(self):
-        self._file.close()
-
-
 class PrinterOdometer:
     """
     This class is responsible for calculating the printer's odometer.
@@ -201,15 +125,14 @@ class PrinterOdometer:
 
         file_path = param["virtual_sdcard"].get("file_path", None)
         if self._printing_file is None and file_path is not None:
-            self._printing_file = GCodeReader(file_path)
+            self._printing_file = motion_minder.GCodeReader(file_path)
             _logger.info("Found a new file, starting to read it.")
         elif self._printing_file is None:
-            file_path = self._motion_minder.get_obj("virtual_sdcard").get(
-                "file_path", None
-            )
+            virtual_sdcard = self._motion_minder.get_obj("virtual_sdcard")
+            file_path = virtual_sdcard.get("file_path", None)
             if file_path is None:
                 return
-            self._printing_file = GCodeReader(file_path)
+            self._printing_file = motion_minder.GCodeReader(file_path)
             _logger.info("Found a running file, starting to read it.")
         file_position = param["virtual_sdcard"].get("file_position", -1)
         distances = self._printing_file.read(file_position=file_position)
