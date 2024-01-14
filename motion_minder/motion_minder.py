@@ -326,64 +326,6 @@ class GCodeReader:
         self._file.close()
 
 
-def _read_gcode(filename, max_extrusion=None):
-    valid_commands = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
-
-    mode = "absolute"
-    extruder_mode = "absolute"
-    distances = {"x": 0, "y": 0, "z": 0, "e": 0}
-    last_positions = {"x": 0, "y": 0, "z": 0, "e": 0}
-
-    with open(filename) as f:
-        for line in f:
-            command, *values = line.split(" ")
-            if command not in valid_commands:
-                continue
-            moves = {}
-            for value in values:
-                try:
-                    moves[value[0]] = float(value[1:])
-                except ValueError:
-                    pass
-
-            if command == "G90":
-                mode = "absolute"
-                extruder_mode = "absolute"
-            elif command == "G91":
-                mode = "relative"
-                extruder_mode = "relative"
-            elif command == "M82":
-                extruder_mode = "absolute"
-            elif command == "M83":
-                extruder_mode = "relative"
-            elif command in ["G1", "G0"]:
-                for axis in ["X", "Y", "Z"]:
-                    if axis in moves:
-                        current_value = moves[axis]
-                        distances[axis.lower()] += (
-                            abs(current_value - last_positions[axis.lower()])
-                            if mode == "absolute"
-                            else current_value
-                        )
-                        last_positions[axis.lower()] = current_value
-                if "E" in moves:
-                    distances["e"] = (
-                        abs(moves["E"] - last_positions["e"])
-                        if extruder_mode == "absolute"
-                        else moves["E"]
-                    )
-                    last_positions["e"] = moves["E"]
-            elif command == "G92":
-                for axis in ["X", "Y", "Z", "E"]:
-                    if axis in moves:
-                        last_positions[axis.lower()] = moves[axis]
-
-            if max_extrusion is not None and distances["e"] > max_extrusion:
-                break
-
-        return distances["x"], distances["y"], distances["z"]
-
-
 def _process_history(gcode_folder, mm):
     jobs = mm.get_jobs_history()
     total_x = 0
@@ -397,7 +339,7 @@ def _process_history(gcode_folder, mm):
         else:
             max_extrusion = None
         fname = f"{gcode_folder}/{job['filename']}"
-        x, y, z = _read_gcode(fname, max_extrusion)
+        x, y, z = GCodeReader(fname).read(max_extrusion=max_extrusion)
         total_x += x
         total_y += y
         total_z += z
