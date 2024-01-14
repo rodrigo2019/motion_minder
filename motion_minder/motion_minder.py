@@ -6,9 +6,16 @@ import sys
 import time
 from logging import handlers
 from threading import Thread
+import argparse
 
 import requests
 import websocket
+
+parser = argparse.ArgumentParser(description="Motion Minder")
+parser.add_argument("--next-maintenance", type=int, help="Next maintenance in kilometers")
+parser.add_argument("--reset-axis", type=str, help="Reset odometer for axis.")
+parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
+parser.add_argument("--process-history", action="store_true", help="Process printer history.")
 
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
@@ -368,21 +375,21 @@ def _query_db(mm):
     )
 
 
-def main():
-    arg = sys.argv[1].lower()
+def main(args):
+
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
-    if arg == "init_km":
-        initial_km_ = float(sys.argv[2])
-        _reset_db(initial_km_, mm)
-    elif arg == "reset":
-        axis = sys.argv[2].lower()
-        if axis not in ["x", "y", "z"]:
-            raise ValueError("Axis must be X, Y or Z")
-        mm.set_odometer(**{axis: 0})
-        _logger.info(f"Odometer for axis {axis} reset to 0")
-    elif arg == "query":
+    if args.next_maintenance is not None:
+        _reset_db(args.next_maintenance, mm)
+    elif args.reset_axis is not None:
+        all_axis = sys.argv[2].lower()
+        for axis in all_axis:
+            if axis not in ["x", "y", "z"]:
+                raise ValueError("Axis must be X, Y or Z")
+            mm.set_odometer(**{axis: 0})
+            _logger.info(f"Odometer for axis {axis} reset to 0")
+    elif args.stats:
         _query_db(mm)
-    elif arg == "process_history":
+    elif args.process_history:
         gcode_folder_ = mm.get_roots().get("gcodes", None)
         if gcode_folder_ is None:
             _logger.error(
@@ -393,4 +400,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(parser.parse_args())
