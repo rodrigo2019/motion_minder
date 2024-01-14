@@ -294,7 +294,7 @@ def _process_history(gcode_folder, mm):
 def _reset_db(initial_km, mm):
     mm.set_key_value("init_value", initial_km * 1000 * 1000)
 
-    mm.logger.info(f"Database reset to: {initial_km} km")
+    _logger.info(f"Database reset to: {initial_km} km")
 
     x, y, z = mm.get_odometer()
 
@@ -316,16 +316,16 @@ def _query_db(mm):
         curr_value_y = get_and_convert_value("odometer_y")
         curr_value_z = get_and_convert_value("odometer_z")
     except:
-        mm.logger.error("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
+        _logger.error("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
         return
 
     health_x = (init_value - (curr_value_x - value_on_reset_x)) / init_value
     health_y = (init_value - (curr_value_y - value_on_reset_y)) / init_value
     health_z = (init_value - (curr_value_z - value_on_reset_z)) / init_value
 
-    mm.logger.info(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
-    mm.logger.info(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
-    mm.logger.info(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
+    _logger.info(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
+    _logger.info(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
+    _logger.info(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
 
 
 def main():
@@ -339,13 +339,13 @@ def main():
         if axis not in ["x", "y", "z"]:
             raise ValueError("Axis must be X, Y or Z")
         mm.set_odometer(**{axis: 0})
-        mm.logger.info(f"Odometer for axis {axis} reset to 0")
+        _logger.info(f"Odometer for axis {axis} reset to 0")
     elif arg == "query":
         _query_db(mm)
     elif arg == "process_history":
         gcode_folder_ = mm.get_roots().get("gcodes", None)
         if gcode_folder_ is None:
-            mm.logger.error("Gcode folder not set. Please set it in your moonraker config")
+            _logger.error("Gcode folder not set. Please set it in your moonraker config")
             exit(-1)
         _process_history(gcode_folder_, mm)
 
