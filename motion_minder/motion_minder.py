@@ -261,9 +261,8 @@ class GCodeReader:
         self._mode = "absolute"
         self._extruder_mode = "absolute"
 
-        self._distances = {"x": 0, "y": 0, "z": 0, "e": 0}
-        self._last_positions = {"x": 0, "y": 0, "z": 0, "e": 0}
-        self._total_distances = {"x": 0, "y": 0, "z": 0, "e": 0}
+        self._last_positions = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
+        self._total_distances = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
 
     def read(self, file_position=None, max_extrusion=None):
         distances = self._total_distances.copy()
