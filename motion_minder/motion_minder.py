@@ -16,6 +16,7 @@ parser.add_argument("--next-maintenance", type=int, help="Next maintenance in ki
 parser.add_argument("--reset-axis", type=str, help="Reset odometer for axis.")
 parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
 parser.add_argument("--process-history", action="store_true", help="Process printer history.")
+parser.add_argument("--axis", type=str, help="Axis to reset.", default="xyz")
 
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
@@ -348,58 +349,49 @@ def _process_history(gcode_folder, mm):
     _query_db(mm)
 
 
-def _reset_db(initial_km, mm):
-    mm.set_key_value("init_value", initial_km * 1000 * 1000)
-
-    _logger.info(f"Database reset to: {initial_km} km")
-
+def _set_next_maintenance(x, y, z, mm):
+    values = [x, y, z]
+    maintenances = [mm.set_key_value(f"next_maintenance_{axis}", value * 1e6)
+                    for axis, value in zip(["x", "y", "z"], values)]
     x, y, z = mm.get_odometer()
 
-    for axis, value in zip(["x", "y", "z"], [x, y, z]):
+    for axis, value, nm in zip(["x", "y", "z"], [x, y, z], maintenances):
         mm.set_key_value(f"odometer_on_reset_{axis}", value)
+        _logger.info(f"Next maintenance planned for {axis} on {(value / 1e6) + nm} km")
 
 
 def _query_db(mm):
     def get_and_convert_value(key):
         value = float(mm.get_key_value(key))
-        return value / 1000 / 1000
+        return value / 1e6
 
     try:
-        init_value = get_and_convert_value("init_value")
-        value_on_reset_x = get_and_convert_value("odometer_on_reset_x")
-        value_on_reset_y = get_and_convert_value("odometer_on_reset_y")
-        value_on_reset_z = get_and_convert_value("odometer_on_reset_z")
-        curr_value_x = get_and_convert_value("odometer_x")
-        curr_value_y = get_and_convert_value("odometer_y")
-        curr_value_z = get_and_convert_value("odometer_z")
-    except:
+        for axis in ["x", "y", "z"]:
+            next_maintenance = get_and_convert_value(f"next_maintenance_{axis}")
+            value_on_reset = get_and_convert_value(f"odometer_on_reset_{axis}")
+            curr_value = get_and_convert_value(f"odometer_{axis}")
+
+            health = (next_maintenance - (curr_value - value_on_reset)) / next_maintenance
+            _logger.info(
+                f"Health of {axis} axis: {health:.2%} (your {axis} axis has traveled {curr_value:.3f} km)"
+            )
+    except Exception as e:
+        _logger.error(f"Error while querying database: {e}", exc_info=True)
         _logger.error(
-            "Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`"
+            "Did you set a maintenance for each axis? Please run `MOTION_MINDER NEXT_MAINTENANCE=<value>`"
         )
         return
-
-    health_x = (init_value - (curr_value_x - value_on_reset_x)) / init_value
-    health_y = (init_value - (curr_value_y - value_on_reset_y)) / init_value
-    health_z = (init_value - (curr_value_z - value_on_reset_z)) / init_value
-
-    _logger.info(
-        f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)"
-    )
-    _logger.info(
-        f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)"
-    )
-    _logger.info(
-        f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)"
-    )
 
 
 def main(args):
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if args.next_maintenance is not None:
-        _reset_db(args.next_maintenance, mm)
+        kwargs = {}
+        for axis in args.axis:
+            kwargs[axis] = args.next_maintenance
+        _set_next_maintenance(mm=mm, **kwargs)
     elif args.reset_axis is not None:
-        all_axis = sys.argv[2].lower()
-        for axis in all_axis:
+        for axis in args.reset_axis.lower():
             if axis not in ["x", "y", "z"]:
                 raise ValueError("Axis must be X, Y or Z")
             mm.set_odometer(**{axis: 0})
