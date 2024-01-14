@@ -1,7 +1,8 @@
 import time
-
+import logging
 import motion_minder
 
+_logger = logging.getLogger("motion_minder").getChild("printer_odometer")
 
 class GCodeReader:
     _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
@@ -107,7 +108,7 @@ class PrinterOdometer:
         self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
         self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
 
-        self._motion_minder.logger.info("Printer odometer initialized.")
+        _logger.info("Printer odometer initialized.")
 
     def _update_single_axis_odometer(self, axis: str, value: float) -> None:
         """
@@ -125,7 +126,7 @@ class PrinterOdometer:
     def _check_update_db_odometer(self, _):
         if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
             current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
-            self._motion_minder.logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
+            _logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
             self._diff_dist = {"x": 0, "y": 0, "z": 0}
             self._last_update = time.time()
 
@@ -170,19 +171,19 @@ class PrinterOdometer:
             if self._printing_file is not None:
                 self._printing_file.close()
                 self._printing_file = None
-                self._motion_minder.logger.info("Done printing, closing file.")
+                _logger.info("Done printing, closing file.")
                 return
 
         file_path = param["virtual_sdcard"].get("file_path", None)
         if self._printing_file is None and file_path is not None:
             self._printing_file = GCodeReader(file_path)
-            self._motion_minder.logger.info("Found a new file, starting to read it.")
+            _logger.info("Found a new file, starting to read it.")
         elif self._printing_file is None:
             file_path = self._motion_minder.get_obj("virtual_sdcard").get("file_path", None)
             if file_path is None:
                 return
             self._printing_file = GCodeReader(file_path)
-            self._motion_minder.logger.info("Found a running file, starting to read it.")
+            _logger.info("Found a running file, starting to read it.")
         file_position = param["virtual_sdcard"].get("file_position", -1)
         distances = self._printing_file.read(file_position=file_position)
         distances.pop("e", None)
@@ -209,7 +210,7 @@ class PrinterOdometer:
                 try:
                     callback(param)
                 except Exception as e:
-                    self._motion_minder.logger.error(f"Error while processing message: {param}. Error: {e}",
+                    _logger.error(f"Error while processing message: {param}. Error: {e}",
                                                      exc_info=True)
 
 

@@ -13,6 +13,12 @@ import websocket
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
+_logger = logging.getLogger("motion_minder")
+_formatter = logging.Formatter('[%(levelname)s] %(message)s')
+_sh = logging.StreamHandler(sys.stdout)
+_sh.setLevel(logging.DEBUG)
+_sh.setFormatter(_formatter)
+_logger.addHandler(_sh)
 
 class MoonrakerInterface:
     def __init__(self, moonraker_address, namespace,
@@ -25,7 +31,8 @@ class MoonrakerInterface:
         self._subscribe_objects = {} if subscribe_objects is None else subscribe_objects
         self._on_message_ws_callbacks = [] if ws_callbacks is None else ws_callbacks
         self._subscribed = False
-
+        
+        self._setup_logger()
         if self._connect_websocket:
             self._websocket = None
             self._connect_to_websocket()
@@ -70,9 +77,9 @@ class MoonrakerInterface:
             if 200 <= ret.status_code < 300:
                 return ret.json().get("result", {}).get("status", {}).get(obj, {})
             else:
-                logging.error(f"Error getting the homed axis: {ret.status_code}")
+                _logger.error(f"Error getting the homed axis. GET status code:{ret.status_code}")
         except Exception as e:
-            logging.error(f"Error getting the homed axis: {e}", exc_info=True)
+            _logger.error(f"Error getting the homed axis: {e}", exc_info=True)
         return {}
 
     def get_jobs_history(self, limit=None):
@@ -98,9 +105,9 @@ class MoonrakerInterface:
                             self._subscribe(self._subscribe_objects)
                             self._subscribed = True
                     else:
-                        logging.error(f"Error checking the klipper state: {klipper_state.status_code}")
+                        _logger.error(f"Error checking the klipper state.  GET status code {klipper_state.status_code}")
                 except Exception as e:
-                    logging.error(f"Error checking the klipper state: {e}", exc_info=True)
+                    _logger.error(f"Error checking the klipper state: {e}", exc_info=True)
             time.sleep(2)
 
     def _connect_to_websocket(self):
@@ -157,30 +164,24 @@ class MoonrakerInterface:
         if len(self._subscribe_objects) > 0:
             self._subscribe(self._subscribe_objects)
 
+    def _setup_logger(self):  
+        
+        logs_folder = self.get_roots().get("logs", {}).get("path", None)
+        if logs_folder is None:
+            _logger.critical("Logs folder not set. Please set it in your moonraker config")
+            exit(-1)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
+                                                    maxBytes=5 * 1024 * 1024, backupCount=5)
+        rh.setLevel(logging.DEBUG)
+        rh.setFormatter(formatter)
+        _logger.addHandler(rh)
+
 
 class MotionMinder(MoonrakerInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self._logger = logging.getLogger("motion_minder")
-        self._setup_logger()
-
-    def _setup_logger(self):
-        self._logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('[%(levelname)s] %(message)s')
-        sh = logging.StreamHandler(sys.stdout)
-        sh.setLevel(logging.DEBUG)
-        sh.setFormatter(formatter)
-        self._logger.addHandler(sh)
-
-        logs_folder = self.get_roots().get("logs", {}).get("path", None)
-        if logs_folder is not None:
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
-                                                      maxBytes=5 * 1024 * 1024, backupCount=5)
-            rh.setLevel(logging.DEBUG)
-            rh.setFormatter(formatter)
-            self._logger.addHandler(rh)
 
     def set_odometer(self, x=None, y=None, z=None):
         if x is not None:
@@ -206,10 +207,6 @@ class MotionMinder(MoonrakerInterface):
                 self.set_key_value(f"odometer_{name}", axis_value)
                 current_odometer[f"odometer_{name}"] = axis_value
         return current_odometer
-
-    @property
-    def logger(self):
-        return self._logger
 
 
 def _read_gcode(filename, max_extrusion=None):
