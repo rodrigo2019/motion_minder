@@ -4,6 +4,7 @@ import motion_minder
 
 _logger = logging.getLogger("motion_minder").getChild("printer_odometer")
 
+
 class GCodeReader:
     _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
 
@@ -51,13 +52,18 @@ class GCodeReader:
                 for axis in ["X", "Y", "Z"]:
                     if axis in moves:
                         current_value = moves[axis]
-                        self._total_distances[axis.lower()] += abs(
-                            current_value - self._last_positions[axis.lower()]) \
-                            if self._mode == "absolute" else current_value
+                        self._total_distances[axis.lower()] += (
+                            abs(current_value - self._last_positions[axis.lower()])
+                            if self._mode == "absolute"
+                            else current_value
+                        )
                         self._last_positions[axis.lower()] = current_value
                 if "E" in moves:
-                    self._total_distances["e"] = abs(moves["E"] - self._last_positions["e"]) \
-                        if self._extruder_mode == "absolute" else moves["E"]
+                    self._total_distances["e"] = (
+                        abs(moves["E"] - self._last_positions["e"])
+                        if self._extruder_mode == "absolute"
+                        else moves["E"]
+                    )
                     self._last_positions["e"] = moves["E"]
             elif command == "G92":
                 for axis in ["X", "Y", "Z", "E"]:
@@ -93,14 +99,17 @@ class PrinterOdometer:
 
         self._printing_file = None
 
-        self._motion_minder = motion_minder.MotionMinder(moonraker_address=moonraker_address,
-                                                         namespace=kwargs.get("namespace", "motion_minder"),
-                                                         connect_websocket=True,
-                                                         subscribe_objects={"motion_report": None,
-                                                                            "toolhead": ["homed_axes"],
-                                                                            "virtual_sdcard": None},
-                                                         ws_callbacks=[self.on_message]
-                                                         )
+        self._motion_minder = motion_minder.MotionMinder(
+            moonraker_address=moonraker_address,
+            namespace=kwargs.get("namespace", "motion_minder"),
+            connect_websocket=True,
+            subscribe_objects={
+                "motion_report": None,
+                "toolhead": ["homed_axes"],
+                "virtual_sdcard": None,
+            },
+            ws_callbacks=[self.on_message],
+        )
         self._moonraker_address = moonraker_address
 
         toolhead_stats = self._motion_minder.get_obj("toolhead")
@@ -124,9 +133,14 @@ class PrinterOdometer:
         self._last_position[axis] = value
 
     def _check_update_db_odometer(self, _):
-        if time.time() - self._last_update > self._update_interval and any(self._diff_dist.values()) > 0:
+        if (
+            time.time() - self._last_update > self._update_interval
+            and any(self._diff_dist.values()) > 0
+        ):
             current_odometer = self._motion_minder.add_mileage(**self._diff_dist)
-            _logger.debug(f"Printer odometer updated. {self._diff_dist} // {current_odometer}")
+            _logger.debug(
+                f"Printer odometer updated. {self._diff_dist} // {current_odometer}"
+            )
             self._diff_dist = {"x": 0, "y": 0, "z": 0}
             self._last_update = time.time()
 
@@ -147,7 +161,10 @@ class PrinterOdometer:
             return
         for i, axis in enumerate(["x", "y", "z"]):
             value = live_position[i]
-            if axis in self._homed_axis and self._axis_min[i] <= value <= self._axis_max[i]:
+            if (
+                axis in self._homed_axis
+                and self._axis_min[i] <= value <= self._axis_max[i]
+            ):
                 self._update_single_axis_odometer(axis, value)
 
     def _process_toolhead(self, param):
@@ -179,7 +196,9 @@ class PrinterOdometer:
             self._printing_file = GCodeReader(file_path)
             _logger.info("Found a new file, starting to read it.")
         elif self._printing_file is None:
-            file_path = self._motion_minder.get_obj("virtual_sdcard").get("file_path", None)
+            file_path = self._motion_minder.get_obj("virtual_sdcard").get(
+                "file_path", None
+            )
             if file_path is None:
                 return
             self._printing_file = GCodeReader(file_path)
@@ -199,10 +218,12 @@ class PrinterOdometer:
         """
         params = message.get("params", [])
 
-        callbacks = [self._process_motion_report,
-                     self._process_toolhead,
-                     self._process_virtual_sdcard,
-                     self._check_update_db_odometer]
+        callbacks = [
+            self._process_motion_report,
+            self._process_toolhead,
+            self._process_virtual_sdcard,
+            self._check_update_db_odometer,
+        ]
         for param in params:
             if not isinstance(param, dict):
                 continue
@@ -210,11 +231,16 @@ class PrinterOdometer:
                 try:
                     callback(param)
                 except Exception as e:
-                    _logger.error(f"Error while processing message: {param}. Error: {e}",
-                                                     exc_info=True)
+                    _logger.error(
+                        f"Error while processing message: {param}. Error: {e}",
+                        exc_info=True,
+                    )
 
 
 if __name__ == "__main__":
-    p = PrinterOdometer(moonraker_address=motion_minder.MOONRAKER_ADDRESS, namespace=motion_minder.NAMESPACE)
+    p = PrinterOdometer(
+        moonraker_address=motion_minder.MOONRAKER_ADDRESS,
+        namespace=motion_minder.NAMESPACE,
+    )
     while True:
         time.sleep(60)

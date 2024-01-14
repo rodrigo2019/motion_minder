@@ -14,15 +14,22 @@ MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
 
 _logger = logging.getLogger("motion_minder")
-_formatter = logging.Formatter('[%(levelname)s] %(message)s')
+_formatter = logging.Formatter("[%(levelname)s] %(message)s")
 _sh = logging.StreamHandler(sys.stdout)
 _sh.setLevel(logging.DEBUG)
 _sh.setFormatter(_formatter)
 _logger.addHandler(_sh)
 
+
 class MoonrakerInterface:
-    def __init__(self, moonraker_address, namespace,
-                 connect_websocket=False, subscribe_objects=None, ws_callbacks=None):
+    def __init__(
+        self,
+        moonraker_address,
+        namespace,
+        connect_websocket=False,
+        subscribe_objects=None,
+        ws_callbacks=None,
+    ):
         self._moonraker_address = moonraker_address
         self._namespace = namespace
         self._connect_websocket = connect_websocket
@@ -31,7 +38,7 @@ class MoonrakerInterface:
         self._subscribe_objects = {} if subscribe_objects is None else subscribe_objects
         self._on_message_ws_callbacks = [] if ws_callbacks is None else ws_callbacks
         self._subscribed = False
-        
+
         self._setup_logger()
         if self._connect_websocket:
             self._websocket = None
@@ -72,20 +79,28 @@ class MoonrakerInterface:
 
         :return:
         """
-        ret = requests.get(f"http://{self._moonraker_address}/printer/objects/query?{obj}")
+        ret = requests.get(
+            f"http://{self._moonraker_address}/printer/objects/query?{obj}"
+        )
         try:
             if 200 <= ret.status_code < 300:
                 return ret.json().get("result", {}).get("status", {}).get(obj, {})
             else:
-                _logger.error(f"Error getting the homed axis. GET status code:{ret.status_code}")
+                _logger.error(
+                    f"Error getting the homed axis. GET status code:{ret.status_code}"
+                )
         except Exception as e:
             _logger.error(f"Error getting the homed axis: {e}", exc_info=True)
         return {}
 
     def get_jobs_history(self, limit=None):
         if limit is None:
-            limit = requests.get(f"{self._moonraker_address}/server/history/list?limit=1").json()["result"]["count"]
-        jobs = requests.get(f"{self._moonraker_address}/server/history/list?limit={limit}").json()["result"]["jobs"]
+            limit = requests.get(
+                f"{self._moonraker_address}/server/history/list?limit=1"
+            ).json()["result"]["count"]
+        jobs = requests.get(
+            f"{self._moonraker_address}/server/history/list?limit={limit}"
+        ).json()["result"]["jobs"]
         return jobs
 
     def _check_klipper_state_routine(self) -> None:
@@ -98,16 +113,22 @@ class MoonrakerInterface:
         while True:
             if not self._subscribed:
                 try:
-                    klipper_state = requests.get(f"http://{self._moonraker_address}/server/info")
+                    klipper_state = requests.get(
+                        f"http://{self._moonraker_address}/server/info"
+                    )
                     if 200 <= klipper_state.status_code < 300:
                         klipper_state = klipper_state.json()["result"]["klippy_state"]
                         if klipper_state == "ready":
                             self._subscribe(self._subscribe_objects)
                             self._subscribed = True
                     else:
-                        _logger.error(f"Error checking the klipper state.  GET status code {klipper_state.status_code}")
+                        _logger.error(
+                            f"Error checking the klipper state.  GET status code {klipper_state.status_code}"
+                        )
                 except Exception as e:
-                    _logger.error(f"Error checking the klipper state: {e}", exc_info=True)
+                    _logger.error(
+                        f"Error checking the klipper state: {e}", exc_info=True
+                    )
             time.sleep(2)
 
     def _connect_to_websocket(self):
@@ -126,7 +147,6 @@ class MoonrakerInterface:
         state_thread.start()
 
     def _subscribe(self, subscribe_objects):
-
         self._websocket.send(
             json.dumps(
                 {
@@ -165,11 +185,12 @@ class MoonrakerInterface:
             self._subscribe(self._subscribe_objects)
 
     def _setup_logger(self, keep_trying=False):
-
         while True:
             logs_folder = self.get_roots().get("logs", {}).get("path", None)
             if logs_folder is None and not keep_trying:
-                _logger.warning("Logs folder not found. Starting a thread to keep trying.")
+                _logger.warning(
+                    "Logs folder not found. Starting a thread to keep trying."
+                )
                 thread = Thread(target=self._setup_logger, kwargs={"keep_trying": True})
                 thread.daemon = True
                 thread.start()
@@ -177,9 +198,14 @@ class MoonrakerInterface:
             if logs_folder is None and keep_trying:
                 time.sleep(2)
                 continue
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
-                                                        maxBytes=5 * 1024 * 1024, backupCount=5)
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            rh = logging.handlers.RotatingFileHandler(
+                os.path.join(logs_folder, "motion_minder.log"),
+                maxBytes=5 * 1024 * 1024,
+                backupCount=5,
+            )
             rh.setLevel(logging.DEBUG)
             rh.setFormatter(formatter)
             _logger.addHandler(rh)
@@ -250,13 +276,18 @@ def _read_gcode(filename, max_extrusion=None):
                 for axis in ["X", "Y", "Z"]:
                     if axis in moves:
                         current_value = moves[axis]
-                        distances[axis.lower()] += abs(
-                            current_value - last_positions[axis.lower()]) \
-                            if mode == "absolute" else current_value
+                        distances[axis.lower()] += (
+                            abs(current_value - last_positions[axis.lower()])
+                            if mode == "absolute"
+                            else current_value
+                        )
                         last_positions[axis.lower()] = current_value
                 if "E" in moves:
-                    distances["e"] = abs(moves["E"] - last_positions["e"]) \
-                        if extruder_mode == "absolute" else moves["E"]
+                    distances["e"] = (
+                        abs(moves["E"] - last_positions["e"])
+                        if extruder_mode == "absolute"
+                        else moves["E"]
+                    )
                     last_positions["e"] = moves["E"]
             elif command == "G92":
                 for axis in ["X", "Y", "Z", "E"]:
@@ -277,8 +308,8 @@ def _process_history(gcode_folder, mm):
     for job in jobs:
         if not job["exists"]:
             continue
-        if job['status'] != 'complete':
-            max_extrusion = job['filament_used']
+        if job["status"] != "complete":
+            max_extrusion = job["filament_used"]
         else:
             max_extrusion = None
         fname = f"{gcode_folder}/{job['filename']}"
@@ -316,16 +347,24 @@ def _query_db(mm):
         curr_value_y = get_and_convert_value("odometer_y")
         curr_value_z = get_and_convert_value("odometer_z")
     except:
-        _logger.error("Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`")
+        _logger.error(
+            "Database not initialized. Please run `MOTION_MINDER INIT_KM=<initial_km>`"
+        )
         return
 
     health_x = (init_value - (curr_value_x - value_on_reset_x)) / init_value
     health_y = (init_value - (curr_value_y - value_on_reset_y)) / init_value
     health_z = (init_value - (curr_value_z - value_on_reset_z)) / init_value
 
-    _logger.info(f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)")
-    _logger.info(f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)")
-    _logger.info(f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)")
+    _logger.info(
+        f"Health of X axis: {health_x:.2%} (your X axis has traveled {curr_value_x:.3f} km)"
+    )
+    _logger.info(
+        f"Health of Y axis: {health_y:.2%} (your Y axis has traveled {curr_value_y:.3f} km)"
+    )
+    _logger.info(
+        f"Health of Z axis: {health_z:.2%} (your Z axis has traveled {curr_value_z:.3f} km)"
+    )
 
 
 def main():
@@ -345,7 +384,9 @@ def main():
     elif arg == "process_history":
         gcode_folder_ = mm.get_roots().get("gcodes", None)
         if gcode_folder_ is None:
-            _logger.error("Gcode folder not set. Please set it in your moonraker config")
+            _logger.error(
+                "Gcode folder not set. Please set it in your moonraker config"
+            )
             exit(-1)
         _process_history(gcode_folder_, mm)
 
