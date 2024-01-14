@@ -164,19 +164,26 @@ class MoonrakerInterface:
         if len(self._subscribe_objects) > 0:
             self._subscribe(self._subscribe_objects)
 
-    def _setup_logger(self):  
-        
-        logs_folder = self.get_roots().get("logs", {}).get("path", None)
-        if logs_folder is None:
-            _logger.critical("Logs folder not set. Please set it in your moonraker config")
-            exit(-1)
+    def _setup_logger(self, keep_trying=False):
 
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
-                                                    maxBytes=5 * 1024 * 1024, backupCount=5)
-        rh.setLevel(logging.DEBUG)
-        rh.setFormatter(formatter)
-        _logger.addHandler(rh)
+        while True:
+            logs_folder = self.get_roots().get("logs", {}).get("path", None)
+            if logs_folder is None and not keep_trying:
+                _logger.warning("Logs folder not found. Starting a thread to keep trying.")
+                thread = Thread(target=self._setup_logger, kwargs={"keep_trying": True})
+                thread.daemon = True
+                thread.start()
+                break
+            if logs_folder is None and keep_trying:
+                time.sleep(2)
+                continue
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            rh = logging.handlers.RotatingFileHandler(os.path.join(logs_folder, 'motion_minder.log'),
+                                                        maxBytes=5 * 1024 * 1024, backupCount=5)
+            rh.setLevel(logging.DEBUG)
+            rh.setFormatter(formatter)
+            _logger.addHandler(rh)
+            break
 
 
 class MotionMinder(MoonrakerInterface):
