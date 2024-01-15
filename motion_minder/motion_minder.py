@@ -234,9 +234,9 @@ class MotionMinder(MoonrakerInterface):
             self.set_key_value("odometer_z", z)
 
     def get_odometer(self):
-        x = self.get_key_value("odometer_x")
-        y = self.get_key_value("odometer_y")
-        z = self.get_key_value("odometer_z")
+        x = float(self.get_key_value("odometer_x"))
+        y = float(self.get_key_value("odometer_y"))
+        z = float(self.get_key_value("odometer_z"))
         return x, y, z
 
     def add_mileage(self, x=None, y=None, z=None):
