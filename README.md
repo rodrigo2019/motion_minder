@@ -67,3 +67,15 @@ It can take a while, depending on the number of files, so be patient.
 ```bash
 MOTION_MINDER PROCESS_HISTORY=TRUE
 ```
+
+## Macro arguments
+
+The following arguments can be used to customize the behavior of the motion minder:
+
+| Argument           | Default | Description                                                                                                    |
+|--------------------|---------|----------------------------------------------------------------------------------------------------------------|
+| `NEXT_MAINTENANCE` | None    | The distance (in km) to the next maintenance. it can be used with `AXES` to specify which axis you want to set |
+| `SET_AXIS`         | None    | A value to set the odometer. It can be used with `AXES` to specify which axis you want to set                  |
+| `STATS`            | None    | If set to `TRUE`, it will print the current status of the motion minder                                         |
+| `PROCESS_HISTORY`  | None    | If set to `TRUE`, it will process all the G-code files in the gcodes folder                                     |
+| `AXES`             | "xyz"   | The axis to be used with `NEXT_MAINTENANCE` and `SET_AXES`                                                     |
