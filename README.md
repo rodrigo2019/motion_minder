@@ -57,7 +57,7 @@ MOTION_MINDER STATS=TRUE
 If you need, you can reset the odometer to a desired value:
 
 ```bash
-MOTION_MINDER SET_AXIS=10 AXIS=X
+MOTION_MINDER SET_AXIS=10 AXES=X
 ```
 
 As a experimental feature, you can also process your printer history, its necessary to have all the G-code files in the 

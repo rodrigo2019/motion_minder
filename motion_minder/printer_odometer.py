@@ -37,9 +37,9 @@ class PrinterOdometer:
         self._moonraker_address = moonraker_address
 
         toolhead_stats = self._motion_minder.get_obj("toolhead")
-        self._homed_axis = toolhead_stats.get("homed_axes", "")
-        self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
-        self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
+        self._homed_axes = toolhead_stats.get("homed_axes", "")
+        self._axes_min = toolhead_stats.get("axis_minimum", [None, None, None])
+        self._axes_max = toolhead_stats.get("axis_maximum", [None, None, None])
 
         _logger.info("Printer odometer initialized.")
 
@@ -85,12 +85,12 @@ class PrinterOdometer:
         if "motion_report" not in param or self._printing_file is not None:
             return
 
-        if any(self._axis_max) is None or any(self._axis_min) is None:
+        if any(self._axes_max) is None or any(self._axes_min) is None:
             toolhead_stats = self._motion_minder.get_obj("toolhead")
-            self._homed_axis = toolhead_stats.get("homed_axes", "")
-            self._axis_min = toolhead_stats.get("axis_minimum", [None, None, None])
-            self._axis_max = toolhead_stats.get("axis_maximum", [None, None, None])
-            if any(self._axis_max) is None or any(self._axis_min) is None:
+            self._homed_axes = toolhead_stats.get("homed_axes", "")
+            self._axes_min = toolhead_stats.get("axis_minimum", [None, None, None])
+            self._axes_max = toolhead_stats.get("axis_maximum", [None, None, None])
+            if any(self._axes_max) is None or any(self._axes_min) is None:
                 return
 
         live_position = param["motion_report"].get("live_position", None)
@@ -100,8 +100,8 @@ class PrinterOdometer:
         for i, axis in enumerate(["x", "y", "z"]):
             value = live_position[i]
             if (
-                axis in self._homed_axis
-                and self._axis_min[i] <= value <= self._axis_max[i]
+                axis in self._homed_axes
+                and self._axes_min[i] <= value <= self._axes_max[i]
             ):
                 self._update_single_axis_odometer(axis, value)
 
@@ -116,7 +116,7 @@ class PrinterOdometer:
             return
         homed_axes = param["toolhead"].get("homed_axes", None)
         if homed_axes is not None:
-            self._homed_axis = homed_axes
+            self._homed_axes = homed_axes
 
     def _process_virtual_sdcard(self, param: dict) -> None:
         """

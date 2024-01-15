@@ -14,10 +14,10 @@ import websocket
 
 parser = argparse.ArgumentParser(description="Motion Minder")
 parser.add_argument("--next-maintenance", type=int, help="Next maintenance in kilometers")
-parser.add_argument("--set-axis", type=int, help="Reset odometer for axis.")
+parser.add_argument("--set-axis", type=int, help="Set odometer for the axis.")
 parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
 parser.add_argument("--process-history", action="store_true", help="Process printer history.")
-parser.add_argument("--axis", type=str, help="Axis to set.", default="xyz")
+parser.add_argument("--axes", type=str, help="Axes to set.", default="xyz")
 
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
@@ -127,10 +127,10 @@ class MoonrakerInterface:
                 return ret.json().get("result", {}).get("status", {}).get(obj, {})
             else:
                 _logger.error(
-                    f"Error getting the homed axis. GET status code:{ret.status_code}"
+                    f"Error getting the homed axes. GET status code:{ret.status_code}"
                 )
         except Exception as e:
-            _logger.error(f"Error getting the homed axis: {e}", exc_info=True)
+            _logger.error(f"Error getting the homed axes: {e}", exc_info=True)
         return {}
 
     def get_jobs_history(self, limit: Union[int, None] = None) -> list:
@@ -537,7 +537,7 @@ def main(args: argparse.Namespace) -> None:
             kwargs[axis] = args.next_maintenance
         _set_next_maintenance(mm=mm, **kwargs)
     elif args.set_axis is not None:
-        for axis in args.axis.lower():
+        for axis in args.axes.lower():
             if axis not in ["x", "y", "z"]:
                 raise ValueError("Axis must be `X`, `Y`, `Z`  or any combination e.g: `XYZ`, `XZ`, `ZX`")
             mm.set_odometer(**{axis: args.set_axis * 1e6})
