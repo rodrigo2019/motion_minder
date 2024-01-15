@@ -36,3 +36,34 @@ Follow these steps to install the Motion Minder in your printer:
      primary_branch: main
      install_script: install.sh
      ```
+## Usage
+
+The motion minder is designed to be as unobtrusive as possible. It will automatically start tracking your printer's 
+movements as soon as it's installed. You can check the and set the motion minder by running the following 
+commands over your favorite printer console client (e.g. Fluidd, Mainsail, etc.):
+
+First of all, set when will be your next maintenance:
+
+```bash
+MOTION_MINDER NEXT_MAINTENANCE=100
+```
+
+Then, you can check the current status of the motion minder:
+
+```bash
+MOTION_MINDER STATS=TRUE
+```
+
+If you need, you can reset the odometer to a desired value:
+
+```bash
+MOTION_MINDER SET_AXIS=10 AXIS=X
+```
+
+As a experimental feature, you can also process your printer history, its necessary to have all the G-code files in the 
+gcodes folder, then you can run the following command:
+
+It can take a while, depending on the number of files, so be patient.
+```bash
+MOTION_MINDER PROCESS_HISTORY=TRUE
+```
