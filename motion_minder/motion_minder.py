@@ -339,7 +339,7 @@ def _process_history(gcode_folder, mm):
         else:
             max_extrusion = None
         fname = f"{gcode_folder}/{job['filename']}"
-        x, y, z = GCodeReader(fname).read(max_extrusion=max_extrusion)
+        x, y, z, _ = GCodeReader(fname).read(max_extrusion=max_extrusion).values()
         total_x += x
         total_y += y
         total_z += z
