@@ -13,7 +13,7 @@ import websocket
 
 parser = argparse.ArgumentParser(description="Motion Minder")
 parser.add_argument("--next-maintenance", type=int, help="Next maintenance in kilometers")
-parser.add_argument("--reset-axis", type=str, help="Reset odometer for axis.")
+parser.add_argument("--set-axis", type=int, help="Reset odometer for axis.")
 parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
 parser.add_argument("--process-history", action="store_true", help="Process printer history.")
 parser.add_argument("--axis", type=str, help="Axis to reset.", default="xyz")
@@ -389,12 +389,12 @@ def main(args):
         for axis in args.axis:
             kwargs[axis] = args.next_maintenance
         _set_next_maintenance(mm=mm, **kwargs)
-    elif args.reset_axis is not None:
-        for axis in args.reset_axis.lower():
+    elif args.set_axis is not None:
+        for axis in args.axis.lower():
             if axis not in ["x", "y", "z"]:
-                raise ValueError("Axis must be X, Y or Z")
-            mm.set_odometer(**{axis: 0})
-            _logger.info(f"Odometer for axis {axis} reset to 0")
+                raise ValueError("Axis must be `X`, `Y`, `Z`  or any combination e.g: `XYZ`, `XZ`, `ZX`")
+            mm.set_odometer(**{axis: args.set_axis})
+            _logger.info(f"Odometer for axis {axis} reset to {args.set_axis} km")
     elif args.stats:
         _query_db(mm)
     elif args.process_history:
