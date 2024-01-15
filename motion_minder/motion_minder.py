@@ -348,15 +348,16 @@ def _process_history(gcode_folder, mm):
     _query_db(mm)
 
 
-def _set_next_maintenance(x, y, z, mm):
-    values = [x, y, z]
-    maintenances = [mm.set_key_value(f"next_maintenance_{axis}", value * 1e6)
-                    for axis, value in zip(["x", "y", "z"], values)]
-    x, y, z = mm.get_odometer()
+def _set_next_maintenance(mm, x=None, y=None, z=None):
 
-    for axis, value, nm in zip(["x", "y", "z"], [x, y, z], maintenances):
+    odo_x, odo_y, odo_z = mm.get_odometer()
+
+    for axis, value, nm in zip(["x", "y", "z"], [odo_x, odo_y, odo_z], [x, y, z]):
+        if nm is None:
+            continue
+        nm = mm.set_key_value(f"next_maintenance_{axis}", nm * 1e6)
         mm.set_key_value(f"odometer_on_reset_{axis}", value)
-        _logger.info(f"Next maintenance planned for {axis} on {(value / 1e6) + nm} km")
+        _logger.info(f"{axis.upper()} maintenance at {(value + float(nm))/1e6:.3f} km.")
 
 
 def _query_db(mm):
@@ -386,7 +387,7 @@ def main(args):
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if args.next_maintenance is not None:
         kwargs = {}
-        for axis in args.axis:
+        for axis in args.axis.lower():
             kwargs[axis] = args.next_maintenance
         _set_next_maintenance(mm=mm, **kwargs)
     elif args.set_axis is not None:
