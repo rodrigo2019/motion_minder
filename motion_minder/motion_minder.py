@@ -7,6 +7,7 @@ import sys
 import time
 from logging import handlers
 from threading import Thread
+from typing import Union, Tuple, Dict
 
 import requests
 import websocket
@@ -53,7 +54,7 @@ class MoonrakerInterface:
             self._websocket = None
             self._connect_to_websocket()
 
-    def get_key_value(self, key):
+    def get_key_value(self, key: str) -> Union[str, None]:
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
         response = requests.get(f"{base_url}&key={key}").json()
         if "error" in response:
@@ -61,7 +62,7 @@ class MoonrakerInterface:
         else:
             return response.get("result", {}).get("value", None)
 
-    def set_key_value(self, key, value):
+    def set_key_value(self, key: str, value: Union[str, int, float]) -> Union[str, None]:
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
         response = requests.post(f"{base_url}&key={key}&value={value}").json()
         if "error" in response:
@@ -69,7 +70,7 @@ class MoonrakerInterface:
         else:
             return response.get("result", {}).get("value", None)
 
-    def get_roots(self):
+    def get_roots(self) -> dict:
         endpoint = f"http://{self._moonraker_address}/server/files/roots"
         response = requests.get(f"{endpoint}").json()
         if "error" in response:
@@ -102,7 +103,7 @@ class MoonrakerInterface:
             _logger.error(f"Error getting the homed axis: {e}", exc_info=True)
         return {}
 
-    def get_jobs_history(self, limit=None):
+    def get_jobs_history(self, limit: Union[int, None] = None) -> list:
         if limit is None:
             limit = requests.get(
                 f"http://{self._moonraker_address}/server/history/list?limit=1"
@@ -140,7 +141,7 @@ class MoonrakerInterface:
                     )
             time.sleep(2)
 
-    def _connect_to_websocket(self):
+    def _connect_to_websocket(self) -> None:
         self._websocket = websocket.WebSocketApp(
             f"ws://{self._moonraker_address}/websocket",
             on_message=self._ws_on_message,
@@ -155,7 +156,7 @@ class MoonrakerInterface:
         state_thread.daemon = True
         state_thread.start()
 
-    def _subscribe(self, subscribe_objects):
+    def _subscribe(self, subscribe_objects: dict) -> None:
         self._websocket.send(
             json.dumps(
                 {
@@ -167,7 +168,7 @@ class MoonrakerInterface:
             )
         )
 
-    def _process_klipper_state(self, param):
+    def _process_klipper_state(self, param: dict) -> None:
         """
         Process the klipper state and subscribe to the websocket when it's ready.
 
@@ -180,7 +181,7 @@ class MoonrakerInterface:
         if state is not None and state == "notify_klippy_disconnected":
             self._subscribed = False
 
-    def _ws_on_message(self, _, message):
+    def _ws_on_message(self, _, message: str) -> None:
         message = json.loads(message)
         for callback in self._on_message_ws_callbacks:
             try:
@@ -189,11 +190,11 @@ class MoonrakerInterface:
                 logging.error(f"Error in the callback: {e}", exc_info=True)
         self._process_klipper_state(message)
 
-    def _ws_on_open(self, ws):
+    def _ws_on_open(self, _) -> None:
         if len(self._subscribe_objects) > 0:
             self._subscribe(self._subscribe_objects)
 
-    def _setup_logger(self, keep_trying=False):
+    def _setup_logger(self, keep_trying: bool = False) -> None:
         while True:
             logs_folder = self.get_roots().get("logs", {}).get("path", None)
             if logs_folder is None and not keep_trying:
@@ -225,7 +226,11 @@ class MotionMinder(MoonrakerInterface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def set_odometer(self, x=None, y=None, z=None):
+    def set_odometer(self,
+                     x: Union[int, float, None] = None,
+                     y: Union[int, float, None] = None,
+                     z: Union[int, float, None] = None
+                     ) -> None:
         if x is not None:
             self.set_key_value("odometer_x", x)
         if y is not None:
@@ -233,13 +238,17 @@ class MotionMinder(MoonrakerInterface):
         if z is not None:
             self.set_key_value("odometer_z", z)
 
-    def get_odometer(self):
+    def get_odometer(self) -> Tuple[float, float, float]:
         x = float(self.get_key_value("odometer_x"))
         y = float(self.get_key_value("odometer_y"))
         z = float(self.get_key_value("odometer_z"))
         return x, y, z
 
-    def add_mileage(self, x=None, y=None, z=None):
+    def add_mileage(self,
+                    x: Union[int, float, None] = None,
+                    y: Union[int, float, None] = None,
+                    z: Union[int, float, None] = None
+                    ) -> Dict[str, float]:
         current_odometer = {}
         for axis_value, name in zip([x, y, z], ["x", "y", "z"]):
             if axis_value is not None:
@@ -254,7 +263,7 @@ class MotionMinder(MoonrakerInterface):
 class GCodeReader:
     _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
 
-    def __init__(self, file_path):
+    def __init__(self, file_path: str) -> None:
         self._file_path = file_path
         self._file = open(file_path, "r")
 
@@ -264,7 +273,9 @@ class GCodeReader:
         self._last_positions = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
         self._total_distances = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
 
-    def read(self, file_position=None, max_extrusion=None):
+    def read(self, file_position: Union[int, None] = None,
+             max_extrusion: Union[int, None] = None
+             ) -> Dict[str, float]:
         distances = self._total_distances.copy()
 
         while True:
@@ -322,11 +333,11 @@ class GCodeReader:
 
         return distances
 
-    def close(self):
+    def close(self) -> None:
         self._file.close()
 
 
-def _process_history(gcode_folder, mm):
+def _process_history(gcode_folder: str, mm: MotionMinder) -> None:
     jobs = mm.get_jobs_history()
     total_x = 0
     total_y = 0
@@ -348,8 +359,11 @@ def _process_history(gcode_folder, mm):
     _query_db(mm)
 
 
-def _set_next_maintenance(mm, x=None, y=None, z=None):
-
+def _set_next_maintenance(mm: MotionMinder,
+                          x: Union[int, float, None] = None,
+                          y: Union[int, float, None] = None,
+                          z: Union[int, float, None] = None
+                          ) -> None:
     odo_x, odo_y, odo_z = mm.get_odometer()
 
     for axis, value, nm in zip(["x", "y", "z"], [odo_x, odo_y, odo_z], [x, y, z]):
@@ -357,10 +371,10 @@ def _set_next_maintenance(mm, x=None, y=None, z=None):
             continue
         nm = mm.set_key_value(f"next_maintenance_{axis}", nm * 1e6)
         mm.set_key_value(f"odometer_on_reset_{axis}", value)
-        _logger.info(f"{axis.upper()} maintenance at {(value + float(nm))/1e6:.3f} km.")
+        _logger.info(f"{axis.upper()} maintenance at {(value + float(nm)) / 1e6:.3f} km.")
 
 
-def _query_db(mm):
+def _query_db(mm: MotionMinder) -> None:
     def get_and_convert_value(key):
         value = float(mm.get_key_value(key))
         return value / 1e6
@@ -383,7 +397,7 @@ def _query_db(mm):
         return
 
 
-def main(args):
+def main(args: argparse.Namespace) -> None:
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if args.next_maintenance is not None:
         kwargs = {}

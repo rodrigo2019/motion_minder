@@ -10,7 +10,7 @@ class PrinterOdometer:
     This class is responsible for calculating the printer's odometer.
     """
 
-    def __init__(self, moonraker_address, update_interval: int = 5, **kwargs) -> None:
+    def __init__(self, moonraker_address: str, update_interval: int = 5, **kwargs) -> None:
         """
 
         :param update_interval: The interval in messages between each odometer update.
@@ -56,7 +56,7 @@ class PrinterOdometer:
             self._diff_dist[axis] += abs(value - self._last_position[axis])
         self._last_position[axis] = value
 
-    def _check_update_db_odometer(self, _):
+    def _check_update_db_odometer(self, _: dict) -> None:
         if (
             time.time() - self._last_update > self._update_interval
             and any(self._diff_dist.values()) > 0
@@ -99,7 +99,7 @@ class PrinterOdometer:
             ):
                 self._update_single_axis_odometer(axis, value)
 
-    def _process_toolhead(self, param):
+    def _process_toolhead(self, param: dict) -> None:
         """
         Process the toolhead message and get the homed axes.
 
@@ -112,7 +112,7 @@ class PrinterOdometer:
         if homed_axes is not None:
             self._homed_axis = homed_axes
 
-    def _process_virtual_sdcard(self, param):
+    def _process_virtual_sdcard(self, param: dict) -> None:
         if "virtual_sdcard" not in param:
             return
         is_active = param["virtual_sdcard"].get("is_active", None)
@@ -140,7 +140,7 @@ class PrinterOdometer:
         for axis, value in distances.items():
             self._diff_dist[axis] += value
 
-    def on_message(self, message) -> None:
+    def on_message(self, message: dict) -> None:
         """
         Process the message received from the websocket.
 
