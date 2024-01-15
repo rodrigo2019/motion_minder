@@ -399,7 +399,7 @@ def main(args):
     elif args.stats:
         _query_db(mm)
     elif args.process_history:
-        gcode_folder_ = mm.get_roots().get("gcodes", None)
+        gcode_folder_ = mm.get_roots().get("gcodes", {}).get("path", None)
         if gcode_folder_ is None:
             _logger.error(
                 "Gcode folder not set. Please set it in your moonraker config"
