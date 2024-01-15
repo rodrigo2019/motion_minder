@@ -16,7 +16,7 @@ parser.add_argument("--next-maintenance", type=int, help="Next maintenance in ki
 parser.add_argument("--set-axis", type=int, help="Reset odometer for axis.")
 parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
 parser.add_argument("--process-history", action="store_true", help="Process printer history.")
-parser.add_argument("--axis", type=str, help="Axis to reset.", default="xyz")
+parser.add_argument("--axis", type=str, help="Axis to set.", default="xyz")
 
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
 NAMESPACE = "motion_minder"
