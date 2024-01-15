@@ -394,7 +394,7 @@ def main(args):
         for axis in args.axis.lower():
             if axis not in ["x", "y", "z"]:
                 raise ValueError("Axis must be `X`, `Y`, `Z`  or any combination e.g: `XYZ`, `XZ`, `ZX`")
-            mm.set_odometer(**{axis: args.set_axis})
+            mm.set_odometer(**{axis: args.set_axis * 1e6})
             _logger.info(f"Odometer for axis {axis} reset to {args.set_axis} km")
     elif args.stats:
         _query_db(mm)
