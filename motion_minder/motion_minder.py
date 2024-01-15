@@ -373,7 +373,7 @@ def _query_db(mm):
 
             health = (next_maintenance - (curr_value - value_on_reset)) / next_maintenance
             _logger.info(
-                f"Health of {axis} axis: {health:.2%} (your {axis} axis has traveled {curr_value:.3f} km)"
+                f"Health of {axis.upper()} axis: {health:.2%} (your {axis} axis has traveled {curr_value:.3f} km)"
             )
     except Exception as e:
         _logger.error(f"Error while querying database: {e}", exc_info=True)
