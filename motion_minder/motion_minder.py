@@ -32,6 +32,9 @@ _logger.addHandler(_sh)
 
 
 class MoonrakerInterface:
+    """
+    This class is responsible for interfacing with the Moonraker API.
+    """
     def __init__(
             self,
             moonraker_address,
@@ -40,6 +43,15 @@ class MoonrakerInterface:
             subscribe_objects=None,
             ws_callbacks=None,
     ):
+        """
+
+        :param moonraker_address: The address of the Moonraker server.
+        :param namespace: The namespace to use for the database.
+        :param connect_websocket: Whether to connect to the Moonraker websocket.
+        :param subscribe_objects: A dictionary of objects to subscribe to. The key is the object name and the value is
+            a list of keys to subscribe to. If the value is None, it will subscribe to all keys.
+        :param ws_callbacks: A list of callbacks to call when a message is received from the websocket.
+        """
         self._moonraker_address = moonraker_address
         self._namespace = namespace
         self._connect_websocket = connect_websocket
@@ -55,6 +67,12 @@ class MoonrakerInterface:
             self._connect_to_websocket()
 
     def get_key_value(self, key: str) -> Union[str, None]:
+        """
+        Get the value of a key from the database.
+
+        :param key: The key to get the value of.
+        :return: The value of the key or None if the key does not exist.
+        """
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
         response = requests.get(f"{base_url}&key={key}").json()
         if "error" in response:
@@ -63,6 +81,13 @@ class MoonrakerInterface:
             return response.get("result", {}).get("value", None)
 
     def set_key_value(self, key: str, value: Union[str, int, float]) -> Union[str, None]:
+        """
+        Set the value of a key in the database.
+
+        :param key: The key to set the value of.
+        :param value: The value to set the key to.
+        :return: The value of the key or None if the key does not exist.
+        """
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
         response = requests.post(f"{base_url}&key={key}&value={value}").json()
         if "error" in response:
@@ -71,6 +96,11 @@ class MoonrakerInterface:
             return response.get("result", {}).get("value", None)
 
     def get_roots(self) -> dict:
+        """
+        Get the roots of the files on the printer.
+
+        :return: A dictionary of the roots. The key is the name of the root and the value is the root object.
+        """
         endpoint = f"http://{self._moonraker_address}/server/files/roots"
         response = requests.get(f"{endpoint}").json()
         if "error" in response:
@@ -85,9 +115,9 @@ class MoonrakerInterface:
 
     def get_obj(self, obj: str) -> dict:
         """
-        Get the homed axis from the printer.
+        Get the values of an object.
 
-        :return:
+        :return: A dictionary of the values of the object. The key is the name of the value and the value is the value.
         """
         ret = requests.get(
             f"http://{self._moonraker_address}/printer/objects/query?{obj}"
@@ -104,6 +134,12 @@ class MoonrakerInterface:
         return {}
 
     def get_jobs_history(self, limit: Union[int, None] = None) -> list:
+        """
+        Get the jobs history from the printer.
+
+        :param limit: The number of jobs to get. If None, it will get all the jobs.
+        :return: A list of the jobs.
+        """
         if limit is None:
             limit = requests.get(
                 f"http://{self._moonraker_address}/server/history/list?limit=1"
@@ -142,6 +178,11 @@ class MoonrakerInterface:
             time.sleep(2)
 
     def _connect_to_websocket(self) -> None:
+        """
+        Connect to the websocket and start the thread to check the klipper state.
+
+        :return:
+        """
         self._websocket = websocket.WebSocketApp(
             f"ws://{self._moonraker_address}/websocket",
             on_message=self._ws_on_message,
@@ -157,6 +198,12 @@ class MoonrakerInterface:
         state_thread.start()
 
     def _subscribe(self, subscribe_objects: dict) -> None:
+        """
+        Subscribe to the websocket.
+
+        :param subscribe_objects: The objects to subscribe to.
+        :return:
+        """
         self._websocket.send(
             json.dumps(
                 {
@@ -182,6 +229,13 @@ class MoonrakerInterface:
             self._subscribed = False
 
     def _ws_on_message(self, _, message: str) -> None:
+        """
+        Callback for the websocket when a message is received.
+
+        :param _:
+        :param message: The message received from the websocket.
+        :return:
+        """
         message = json.loads(message)
         for callback in self._on_message_ws_callbacks:
             try:
@@ -191,10 +245,22 @@ class MoonrakerInterface:
         self._process_klipper_state(message)
 
     def _ws_on_open(self, _) -> None:
+        """
+        Callback for the websocket when it's open.
+
+        :param _:
+        :return:
+        """
         if len(self._subscribe_objects) > 0:
             self._subscribe(self._subscribe_objects)
 
     def _setup_logger(self, keep_trying: bool = False) -> None:
+        """
+        Set up the rotation handler for the logger.
+
+        :param keep_trying: If True, it will start a thread to keep trying to set up the logger.
+        :return:
+        """
         while True:
             logs_folder = self.get_roots().get("logs", {}).get("path", None)
             if logs_folder is None and not keep_trying:
@@ -223,6 +289,9 @@ class MoonrakerInterface:
 
 
 class MotionMinder(MoonrakerInterface):
+    """
+    Class to interface with the Motion Minder plugin.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -231,6 +300,14 @@ class MotionMinder(MoonrakerInterface):
                      y: Union[int, float, None] = None,
                      z: Union[int, float, None] = None
                      ) -> None:
+        """
+        Set the odometer values.
+
+        :param x: The value for the x-axis.
+        :param y: The value for the y-axis.
+        :param z: The value for the z-axis.
+        :return:
+        """
         if x is not None:
             self.set_key_value("odometer_x", x)
         if y is not None:
@@ -239,6 +316,11 @@ class MotionMinder(MoonrakerInterface):
             self.set_key_value("odometer_z", z)
 
     def get_odometer(self) -> Tuple[float, float, float]:
+        """
+        Get the odometer values.
+
+        :return: The odometer values, in the order x, y, z.
+        """
         x = float(self.get_key_value("odometer_x"))
         y = float(self.get_key_value("odometer_y"))
         z = float(self.get_key_value("odometer_z"))
@@ -249,6 +331,14 @@ class MotionMinder(MoonrakerInterface):
                     y: Union[int, float, None] = None,
                     z: Union[int, float, None] = None
                     ) -> Dict[str, float]:
+        """
+        Add mileage to the odometer.
+
+        :param x: The value for the x-axis to add.
+        :param y: The value for the y-axis to add.
+        :param z: The value for the z-axis to add.
+        :return: The current odometer values.
+        """
         current_odometer = {}
         for axis_value, name in zip([x, y, z], ["x", "y", "z"]):
             if axis_value is not None:
@@ -261,9 +351,16 @@ class MotionMinder(MoonrakerInterface):
 
 
 class GCodeReader:
+    """
+    Class to read a gcode file and return the distances traveled.
+    """
     _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
 
     def __init__(self, file_path: str) -> None:
+        """
+
+        :param file_path: The path to the gcode file.
+        """
         self._file_path = file_path
         self._file = open(file_path, "r")
 
@@ -276,6 +373,13 @@ class GCodeReader:
     def read(self, file_position: Union[int, None] = None,
              max_extrusion: Union[int, None] = None
              ) -> Dict[str, float]:
+        """
+        Read the gcode file and return the distances traveled.
+
+        :param file_position: Position in the file in bytes where the code will not process beyond.
+        :param max_extrusion: The maximum extrusion value to process.
+        :return: The distances traveled by the axes and extruder.
+        """
         distances = self._total_distances.copy()
 
         while True:
@@ -338,6 +442,13 @@ class GCodeReader:
 
 
 def _process_history(gcode_folder: str, mm: MotionMinder) -> None:
+    """
+    Process the history of jobs and add the mileage to the odometer.
+
+    :param gcode_folder: Path to the gcode folder.
+    :param mm: The MotionMinder object.
+    :return:
+    """
     jobs = mm.get_jobs_history()
     total_x = 0
     total_y = 0
@@ -364,6 +475,15 @@ def _set_next_maintenance(mm: MotionMinder,
                           y: Union[int, float, None] = None,
                           z: Union[int, float, None] = None
                           ) -> None:
+    """
+    Set the next maintenance for the axes.
+
+    :param mm: MotionMinder object.
+    :param x: The next maintenance distance for the x-axis in km.
+    :param y: The next maintenance distance for the y-axis in km.
+    :param z: The next maintenance distance for the z-axis in km.
+    :return:
+    """
     odo_x, odo_y, odo_z = mm.get_odometer()
 
     for axis, value, nm in zip(["x", "y", "z"], [odo_x, odo_y, odo_z], [x, y, z]):
@@ -375,6 +495,12 @@ def _set_next_maintenance(mm: MotionMinder,
 
 
 def _query_db(mm: MotionMinder) -> None:
+    """
+    Query the database and print the health of each axis.
+
+    :param mm: MotionMinder object.
+    :return:
+    """
     def get_and_convert_value(key):
         value = float(mm.get_key_value(key))
         return value / 1e6
@@ -398,6 +524,12 @@ def _query_db(mm: MotionMinder) -> None:
 
 
 def main(args: argparse.Namespace) -> None:
+    """
+    Main function.
+
+    :param args: The arguments.
+    :return:
+    """
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if args.next_maintenance is not None:
         kwargs = {}

@@ -57,6 +57,12 @@ class PrinterOdometer:
         self._last_position[axis] = value
 
     def _check_update_db_odometer(self, _: dict) -> None:
+        """
+        Check if the odometer needs to be updated and update it if necessary.
+
+        :param _:
+        :return:
+        """
         if (
             time.time() - self._last_update > self._update_interval
             and any(self._diff_dist.values()) > 0
@@ -113,6 +119,12 @@ class PrinterOdometer:
             self._homed_axis = homed_axes
 
     def _process_virtual_sdcard(self, param: dict) -> None:
+        """
+        Process the virtual sdcard message and start reading the file.
+
+        :param param:
+        :return:
+        """
         if "virtual_sdcard" not in param:
             return
         is_active = param["virtual_sdcard"].get("is_active", None)
