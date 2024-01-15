@@ -105,10 +105,10 @@ class MoonrakerInterface:
     def get_jobs_history(self, limit=None):
         if limit is None:
             limit = requests.get(
-                f"{self._moonraker_address}/server/history/list?limit=1"
+                f"http://{self._moonraker_address}/server/history/list?limit=1"
             ).json()["result"]["count"]
         jobs = requests.get(
-            f"{self._moonraker_address}/server/history/list?limit={limit}"
+            f"http://{self._moonraker_address}/server/history/list?limit={limit}"
         ).json()["result"]["jobs"]
         return jobs
 
