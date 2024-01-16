@@ -13,10 +13,14 @@ import requests
 import websocket
 
 parser = argparse.ArgumentParser(description="Motion Minder")
-parser.add_argument("--next-maintenance", type=int, help="Next maintenance in kilometers")
+parser.add_argument(
+    "--next-maintenance", type=int, help="Next maintenance in kilometers"
+)
 parser.add_argument("--set-axis", type=int, help="Set odometer for the axis.")
 parser.add_argument("--stats", action="store_true", help="Motion Minder stats.")
-parser.add_argument("--process-history", action="store_true", help="Process printer history.")
+parser.add_argument(
+    "--process-history", action="store_true", help="Process printer history."
+)
 parser.add_argument("--axes", type=str, help="Axes to set.", default="xyz")
 
 MOONRAKER_ADDRESS = "127.0.0.1:7125"
@@ -35,13 +39,14 @@ class MoonrakerInterface:
     """
     This class is responsible for interfacing with the Moonraker API.
     """
+
     def __init__(
-            self,
-            moonraker_address,
-            namespace,
-            connect_websocket=False,
-            subscribe_objects=None,
-            ws_callbacks=None,
+        self,
+        moonraker_address,
+        namespace,
+        connect_websocket=False,
+        subscribe_objects=None,
+        ws_callbacks=None,
     ):
         """
 
@@ -80,7 +85,9 @@ class MoonrakerInterface:
         else:
             return response.get("result", {}).get("value", None)
 
-    def set_key_value(self, key: str, value: Union[str, int, float]) -> Union[str, None]:
+    def set_key_value(
+        self, key: str, value: Union[str, int, float]
+    ) -> Union[str, None]:
         """
         Set the value of a key in the database.
 
@@ -292,14 +299,16 @@ class MotionMinder(MoonrakerInterface):
     """
     Class to interface with the Motion Minder plugin.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def set_odometer(self,
-                     x: Union[int, float, None] = None,
-                     y: Union[int, float, None] = None,
-                     z: Union[int, float, None] = None
-                     ) -> None:
+    def set_odometer(
+        self,
+        x: Union[int, float, None] = None,
+        y: Union[int, float, None] = None,
+        z: Union[int, float, None] = None,
+    ) -> None:
         """
         Set the odometer values.
 
@@ -326,11 +335,12 @@ class MotionMinder(MoonrakerInterface):
         z = float(self.get_key_value("odometer_z"))
         return x, y, z
 
-    def add_mileage(self,
-                    x: Union[int, float, None] = None,
-                    y: Union[int, float, None] = None,
-                    z: Union[int, float, None] = None
-                    ) -> Dict[str, float]:
+    def add_mileage(
+        self,
+        x: Union[int, float, None] = None,
+        y: Union[int, float, None] = None,
+        z: Union[int, float, None] = None,
+    ) -> Dict[str, float]:
         """
         Add mileage to the odometer.
 
@@ -354,6 +364,7 @@ class GCodeReader:
     """
     Class to read a gcode file and return the distances traveled.
     """
+
     _VALID_COMMANDS = {"G90", "G91", "G92", "G1", "G0", "M82", "M83"}
 
     def __init__(self, file_path: str) -> None:
@@ -370,9 +381,11 @@ class GCodeReader:
         self._last_positions = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
         self._total_distances = {"x": 0.0, "y": 0.0, "z": 0.0, "e": 0.0}
 
-    def read(self, file_position: Union[int, None] = None,
-             max_extrusion: Union[int, None] = None
-             ) -> Dict[str, float]:
+    def read(
+        self,
+        file_position: Union[int, None] = None,
+        max_extrusion: Union[int, None] = None,
+    ) -> Dict[str, float]:
         """
         Read the gcode file and return the distances traveled.
 
@@ -470,11 +483,12 @@ def _process_history(gcode_folder: str, mm: MotionMinder) -> None:
     _query_db(mm)
 
 
-def _set_next_maintenance(mm: MotionMinder,
-                          x: Union[int, float, None] = None,
-                          y: Union[int, float, None] = None,
-                          z: Union[int, float, None] = None
-                          ) -> None:
+def _set_next_maintenance(
+    mm: MotionMinder,
+    x: Union[int, float, None] = None,
+    y: Union[int, float, None] = None,
+    z: Union[int, float, None] = None,
+) -> None:
     """
     Set the next maintenance for the axes.
 
@@ -491,7 +505,9 @@ def _set_next_maintenance(mm: MotionMinder,
             continue
         nm = mm.set_key_value(f"next_maintenance_{axis}", nm * 1e6)
         mm.set_key_value(f"odometer_on_reset_{axis}", value)
-        _logger.info(f"{axis.upper()} maintenance at {(value + float(nm)) / 1e6:.3f} km.")
+        _logger.info(
+            f"{axis.upper()} maintenance at {(value + float(nm)) / 1e6:.3f} km."
+        )
 
 
 def _query_db(mm: MotionMinder) -> None:
@@ -501,6 +517,7 @@ def _query_db(mm: MotionMinder) -> None:
     :param mm: MotionMinder object.
     :return:
     """
+
     def get_and_convert_value(key):
         value = float(mm.get_key_value(key))
         return value / 1e6
@@ -511,7 +528,9 @@ def _query_db(mm: MotionMinder) -> None:
             value_on_reset = get_and_convert_value(f"odometer_on_reset_{axis}")
             curr_value = get_and_convert_value(f"odometer_{axis}")
 
-            health = (next_maintenance - (curr_value - value_on_reset)) / next_maintenance
+            health = (
+                next_maintenance - (curr_value - value_on_reset)
+            ) / next_maintenance
             _logger.info(
                 f"Health of {axis.upper()} axis: {health:.2%} (your {axis} axis has traveled {curr_value:.3f} km)"
             )
@@ -539,7 +558,9 @@ def main(args: argparse.Namespace) -> None:
     elif args.set_axis is not None:
         for axis in args.axes.lower():
             if axis not in ["x", "y", "z"]:
-                raise ValueError("Axis must be `X`, `Y`, `Z`  or any combination e.g: `XYZ`, `XZ`, `ZX`")
+                raise ValueError(
+                    "Axis must be `X`, `Y`, `Z`  or any combination e.g: `XYZ`, `XZ`, `ZX`"
+                )
             mm.set_odometer(**{axis: args.set_axis * 1e6})
             _logger.info(f"Odometer for axis {axis} reset to {args.set_axis} km")
     elif args.stats:

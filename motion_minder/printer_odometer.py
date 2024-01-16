@@ -10,7 +10,9 @@ class PrinterOdometer:
     This class is responsible for calculating the printer's odometer.
     """
 
-    def __init__(self, moonraker_address: str, update_interval: int = 5, **kwargs) -> None:
+    def __init__(
+        self, moonraker_address: str, update_interval: int = 5, **kwargs
+    ) -> None:
         """
 
         :param update_interval: The interval in messages between each odometer update.
