@@ -533,7 +533,7 @@ def main(args: argparse.Namespace) -> None:
     mm = MotionMinder(moonraker_address=MOONRAKER_ADDRESS, namespace=NAMESPACE)
     if args.next_maintenance is not None:
         kwargs = {}
-        for axis in args.axis.lower():
+        for axis in args.axes.lower():
             kwargs[axis] = args.next_maintenance
         _set_next_maintenance(mm=mm, **kwargs)
     elif args.set_axis is not None:
