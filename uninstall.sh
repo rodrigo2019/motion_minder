@@ -27,12 +27,16 @@ remove_all(){
   sudo systemctl daemon-reload
   sudo systemctl reset-failed
 
-  ### remove MoonrakerTelegramBot VENV dir
+  ### remove MotionMinder dir
   if [ -d "$MOTION_MINDER_ENV" ]; then
     echo -e "Removing MotionMinder VENV directory ..."
     rm -rf "${MOTION_MINDER_ENV}" && echo -e "Directory removed!"
   fi
 
+  if [ -d "$MOTION_MINDER_DIR" ]; then
+    echo -e "Removing MotionMinder directory ..."
+    rm -rf "${MOTION_MINDER_DIR}" && echo -e "Directory removed!"
+  fi
 }
 
 delete_db(){
