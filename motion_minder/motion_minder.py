@@ -1,3 +1,4 @@
+"""This file may be distributed under the terms of the GNU GPLv3 license"""
 import argparse
 import json
 import logging
@@ -53,9 +54,11 @@ class MoonrakerInterface:
         :param moonraker_address: The address of the Moonraker server.
         :param namespace: The namespace to use for the database.
         :param connect_websocket: Whether to connect to the Moonraker websocket.
-        :param subscribe_objects: A dictionary of objects to subscribe to. The key is the object name and the value is
-            a list of keys to subscribe to. If the value is None, it will subscribe to all keys.
-        :param ws_callbacks: A list of callbacks to call when a message is received from the websocket.
+        :param subscribe_objects: A dictionary of objects to subscribe to. 
+            The key is the object name and the value is a list of keys to subscribe to. 
+            If the value is None, it will subscribe to all keys.
+        :param ws_callbacks: A list of callbacks to call when a message is received 
+            from the websocket.
         """
         self._moonraker_address = moonraker_address
         self._namespace = namespace
@@ -79,7 +82,7 @@ class MoonrakerInterface:
         :return: The value of the key or None if the key does not exist.
         """
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
-        response = requests.get(f"{base_url}&key={key}").json()
+        response = requests.get(f"{base_url}&key={key}", timeout=3).json()
         if "error" in response:
             return None
         else:
@@ -96,7 +99,7 @@ class MoonrakerInterface:
         :return: The value of the key or None if the key does not exist.
         """
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
-        response = requests.post(f"{base_url}&key={key}&value={value}").json()
+        response = requests.post(f"{base_url}&key={key}&value={value}", timeout=3).json()
         if "error" in response:
             return None
         else:
@@ -106,10 +109,11 @@ class MoonrakerInterface:
         """
         Get the roots of the files on the printer.
 
-        :return: A dictionary of the roots. The key is the name of the root and the value is the root object.
+        :return: A dictionary of the roots. The key is the name of the root and 
+            the value is the root object.
         """
         endpoint = f"http://{self._moonraker_address}/server/files/roots"
-        response = requests.get(f"{endpoint}").json()
+        response = requests.get(f"{endpoint}", timeout=3).json()
         if "error" in response:
             return {}
         else:
@@ -124,10 +128,11 @@ class MoonrakerInterface:
         """
         Get the values of an object.
 
-        :return: A dictionary of the values of the object. The key is the name of the value and the value is the value.
+        :return: A dictionary of the values of the object. The key is the name of 
+            the value and the value is the value.
         """
         ret = requests.get(
-            f"http://{self._moonraker_address}/printer/objects/query?{obj}"
+            f"http://{self._moonraker_address}/printer/objects/query?{obj}", timeout=1
         )
         try:
             if 200 <= ret.status_code < 300:
@@ -149,10 +154,10 @@ class MoonrakerInterface:
         """
         if limit is None:
             limit = requests.get(
-                f"http://{self._moonraker_address}/server/history/list?limit=1"
+                f"http://{self._moonraker_address}/server/history/list?limit=1", timeout=1
             ).json()["result"]["count"]
         jobs = requests.get(
-            f"http://{self._moonraker_address}/server/history/list?limit={limit}"
+            f"http://{self._moonraker_address}/server/history/list?limit={limit}", timeout=1
         ).json()["result"]["jobs"]
         return jobs
 
@@ -167,7 +172,7 @@ class MoonrakerInterface:
             if not self._subscribed:
                 try:
                     klipper_state = requests.get(
-                        f"http://{self._moonraker_address}/server/info"
+                        f"http://{self._moonraker_address}/server/info", timeout=1
                     )
                     if 200 <= klipper_state.status_code < 300:
                         klipper_state = klipper_state.json()["result"]["klippy_state"]
@@ -226,7 +231,8 @@ class MoonrakerInterface:
         """
         Process the klipper state and subscribe to the websocket when it's ready.
 
-        :param param: The message received from the websocket that can contain the klipper state or not.
+        :param param: The message received from the websocket that can contain 
+            the klipper state or not.
         :return:
         """
         if "method" not in param:
@@ -451,6 +457,11 @@ class GCodeReader:
         return distances
 
     def close(self) -> None:
+        """
+        Close the file.
+        
+        :return:
+        """
         self._file.close()
 
 

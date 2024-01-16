@@ -1,3 +1,4 @@
+"""This file may be distributed under the terms of the GNU GPLv3 license"""
 import time
 import logging
 import motion_minder
@@ -80,7 +81,8 @@ class PrinterOdometer:
         """
         Process the motion report and update the odometer.
 
-        :param param: The message received from the websocket that can contain the motion report or not.
+        :param param: The message received from the websocket that can contain 
+            the motion report or not.
         :return:
         """
 
@@ -111,7 +113,8 @@ class PrinterOdometer:
         """
         Process the toolhead message and get the homed axes.
 
-        :param param: The message received from the websocket that can contain the toolhead message or not.
+        :param param: The message received from the websocket that can contain 
+            the toolhead message or not.
         :return:
         """
         if "toolhead" not in param:
