@@ -39,4 +39,6 @@ delete_db(){
   echo -e "Removing MotionMinder database from moonraker ..."
   "${MOTION_MINDER_ENV}"/bin/python "${MOTION_MINDER_DIR}"/scripts/delete_db.py
 }
+
+delete_db
 remove_all
