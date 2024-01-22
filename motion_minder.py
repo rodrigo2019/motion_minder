@@ -13,7 +13,7 @@ class MotionMinder:
     This plugin keeps track of the distance traveled by the toolhead.
     It works by decorating the toolhead.move function and keeping track of the
         position before the move. Moves executed by probing or homing are partially
-        ignored, as part of the move do not completly follow de toolhead.move function.
+        ignored, as part of the move do not completely follow de toolhead.move function.
 
     """
 
