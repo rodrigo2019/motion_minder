@@ -63,12 +63,13 @@ class MotionMinder:
 
     def _cmd_motion_minder(self, gcmd):
         set_value = gcmd.get_float("SET", None)
+        set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
         axes = gcmd.get("AXES", "xyz")
         unit = gcmd.get("UNIT", "km")
 
-        if set_value is None:
+        if set_value is None and set_maintenance is None:
             self._return_odometer()
-        else:
+        elif set_value is not None:
             self._set_odometer(set_value, axes, unit)
 
     def _return_odometer(self):
@@ -98,6 +99,21 @@ class MotionMinder:
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
             self._odometer[axis] = value
         self._return_odometer()
+
+    def _set_maintenance(self, value, axes, unit):
+        if unit not in ["mm", "m", "km"]:
+            raise self._gcode.error(f"Invalid unit '{unit}'.")
+
+        if unit == "m":
+            value *= 1_000
+        elif unit == "km":
+            value *= 1_000_000
+        for axis in axes.lower():
+            if axis not in "xyz":
+                raise self._gcode.error(f"Invalid '{axis}' axis.")
+            with shelve.open(self._db_fname) as db:
+                db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
+                db[f"maintenance_{axis}"] = value
 
 
 def load_config(config):
