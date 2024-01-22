@@ -39,31 +39,21 @@ class MotionMinder:
                 with shelve.open(self._db_fname) as db:
                     db["odometer"] = self._odometer
 
+    def _decorate_move(self, func):
+        def wrapper(newpos, speed):
+            for i, axis in enumerate("xyz"):
+                if self._ignore_position:
+                    break
+                if newpos[i] != self._position[axis]:
+                    self._odometer[axis] += abs(newpos[i] - self._position[axis])
+                    self._position[axis] = newpos[i]
+            return func(newpos, speed)
+
+        return wrapper
+
     def _get_toolhead(self):
         self._toolhead = self._printer.lookup_object('toolhead')
-        kinematics = self._toolhead.get_kinematics()
-        steppers = kinematics.get_steppers()
-
-        axis_idx = {"x": 0, "y": 1, "z": 2}
-        for stepper in steppers:
-            stepper_name = stepper.get_name()
-            stepper_axis = stepper_name.split("_")[1]
-            if stepper_axis in self._steppers:
-                self._steppers[stepper_axis] = stepper
-                self._position[stepper_axis] = self._toolhead.get_position()[axis_idx[stepper_axis]]
-                self._steppers[stepper_axis].add_active_callback(self._configure_callback(stepper_axis))
-                
-    def _configure_callback(self, axis):
-        axis_idx = {"x": 0, "y": 1, "z": 2}[axis]
-
-        def callback(_):
-            current_position = self._toolhead.get_position()[axis_idx]
-            delta = abs(current_position - self._position[axis])
-            self._position[axis] = current_position
-            self._odometer[axis] += delta
-            self._steppers[axis].add_active_callback(self._configure_callback(axis))
-
-        return callback
+        self._toolhead.move = self._decorate_move(self._toolhead.move)
 
     def _cmd_motion_minder(self, gcmd):
         set_value = gcmd.get_float("SET", None)
