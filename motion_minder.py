@@ -30,7 +30,7 @@ class MotionMinder:
         self._thread.daemon = True
         self._thread.start()
 
-        self._gcode.register_command("MOTION_MINDER", self._cmd_motion_minder, desc="Get/set odometer values.")
+        self._gcode.register_command("MOTION_MINDER", self._cmd_motion_minder, desc="Get/set odometer parameters.")
 
     def _motion_minder_thread(self):
         while True:
