@@ -19,9 +19,8 @@ class MotionMinder:
         self._db_fname = os.path.dirname(self._db_fname)  # go back 1 folder level
         self._db_fname = os.path.join(self._db_fname, "database", _db_name)
 
-        self._db = shelve.open(self._db_fname)
-
-        self._odometer = self._db.get("odometer", {"x": 0, "y": 0, "z": 0})
+        with shelve.open(self._db_fname) as db:
+            self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
 
@@ -31,13 +30,11 @@ class MotionMinder:
 
         self._gcode.register_command("MOTION_MINDER", self._cmd_motion_minder, desc="Get/set odometer values.")
 
-    def __del__(self):
-        self._db.close()
-
     def _motion_minder_thread(self):
         while True:
             time.sleep(5)
-            self._db["odometer"] = self._odometer
+            with shelve.open(self._db_fname) as db:
+                db["odometer"] = self._odometer
 
     def _get_toolhead(self):
         self._toolhead = self._printer.lookup_object('toolhead')
