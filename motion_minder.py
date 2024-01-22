@@ -91,15 +91,22 @@ class MotionMinder:
     def _return_odometer(self):
         result = ""
         for axis in self._odometer:
-            value = self._odometer[axis]
-            metric = "millimeters"
-            if 1000 < value < 1000000:
-                value /= 1000
-                metric = "meters"
-            elif value > 1000000:
-                value /= 1000000
-                metric = "kilometers"
-            result += f"{axis.upper()}: {value:.3f} {metric}\n"
+            raw_value = self._odometer[axis]
+            unit = self._get_recommended_unit(raw_value)
+            value = self._convert_mm_to_unit(raw_value, unit)
+            result += f"{axis.upper()}: {value:.3f} {unit}\n"
+            with shelve.open(self._db_fname) as db:
+                next_maintenance = db.get(f"next_maintenance_{axis}", None)
+                if next_maintenance is not None and next_maintenance > value:
+                    unit = self._get_recommended_unit(next_maintenance - raw_value)
+                    next_maintenance = self._convert_mm_to_unit(next_maintenance - raw_value, unit)
+                    result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
+                elif next_maintenance is not None:
+                    unit = self._get_recommended_unit(raw_value - next_maintenance)
+                    next_maintenance = self._convert_mm_to_unit(raw_value - next_maintenance, unit)
+                    result += f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
+                else:
+                    result += f"  Maintenance not set.\n"
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value, axes, unit):
