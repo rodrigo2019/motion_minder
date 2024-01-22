@@ -21,16 +21,26 @@ class MotionMinder:
 
         self._lock = Lock()
 
+        self._ignore_position = False
+
         with shelve.open(self._db_fname) as db:
             self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
-    
+        self._printer.register_event_handler("homing:homing_move_begin", self._home_begin)
+        self._printer.register_event_handler("homing:homing_move_end", self._home_end)
+
         self._thread = Thread(target=self._motion_minder_thread)
         self._thread.daemon = True
         self._thread.start()
 
         self._gcode.register_command("MOTION_MINDER", self._cmd_motion_minder, desc="Get/set odometer parameters.")
+
+    def _home_begin(self, *args, **kwargs):
+        self._ignore_position = True
+
+    def _home_end(self, *args, **kwargs):
+        self._ignore_position = False
 
     def _motion_minder_thread(self):
         while True:
