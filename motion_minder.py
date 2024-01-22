@@ -7,6 +7,10 @@ _DB_NAME = "motion_minder.dbm"
 
 
 class MotionMinder:
+    """
+    This plugin keeps track of the distance traveled by the toolhead.
+    
+    """
     def __init__(self, config):
         self._config = config
         self._printer = config.get_printer()
@@ -37,12 +41,32 @@ class MotionMinder:
         self._gcode.register_command("MOTION_MINDER", self._cmd_motion_minder, desc="Get/set odometer parameters.")
 
     def _home_begin(self, *args, **kwargs):
+        """
+        This is called when the toolhead starts homing and sets a flag to ignore the position in our decorator.
+        
+        :param args: Keep compatibility with the event handler.
+        :param kwargs: Keep compatibility with the event handler.
+        :return:
+        """
         self._ignore_position = True
 
     def _home_end(self, *args, **kwargs):
+        """
+        This is called when the toolhead finishes homing and clears the flag to ignore the position in our decorator.
+        
+        :param args: Keep compatibility with the event handler.
+        :param kwargs: Keep compatibility with the event handler.
+        :return:
+        """
         self._ignore_position = False
 
     def _motion_minder_thread(self):
+        """
+        This thread is responsible for saving the odometer value to disk every 5 seconds. We are using a thread because
+            we don't want to block the main thread.
+        
+        :return:
+        """
         while True:
             time.sleep(5)
             with self._lock:
@@ -50,6 +74,12 @@ class MotionMinder:
                     db["odometer"] = self._odometer
 
     def _decorate_move(self, func):
+        """
+        This decorator is used to keep track of the toolhead position. It decorates the toolhead.move function.
+        
+        :param func: The toolhead.move function.
+        :return:
+        """
         def wrapper(newpos, speed):
             for i, axis in enumerate("xyz"):
                 if self._ignore_position:
@@ -62,10 +92,23 @@ class MotionMinder:
         return wrapper
 
     def _get_toolhead(self):
+        """
+        This is called when the toolhead is identified and decorates the toolhead.move function. As the toolhead is
+            identified only after loading the klippy extras we need to register in the event handler that is called
+            after the toolhead is loaded.
+        
+        :return:
+        """
         self._toolhead = self._printer.lookup_object('toolhead')
         self._toolhead.move = self._decorate_move(self._toolhead.move)
 
     def _cmd_motion_minder(self, gcmd):
+        """
+        Our gcode command handler. This is called when the user sends a MOTION_MINDER command.
+
+        :param gcmd:
+        :return:
+        """
         set_value = gcmd.get_float("SET", None)
         set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
         axes = gcmd.get("AXES", "xyz")
@@ -80,6 +123,12 @@ class MotionMinder:
 
     @staticmethod
     def _get_recommended_unit(value):
+        """
+        Get the magnitude of the value and return the recommended unit.
+        
+        :param value:
+        :return:
+        """
         if value < 1000:
             return "mm"
         elif value < 1000000:
@@ -88,6 +137,13 @@ class MotionMinder:
 
     @staticmethod
     def _convert_mm_to_unit(value, unit):
+        """
+        Convert the value from mm to the desired unit.
+        
+        :param value:
+        :param unit:
+        :return:
+        """
         if unit == "m":
             return value / 1000
         elif unit == "km":
@@ -96,6 +152,13 @@ class MotionMinder:
 
     @staticmethod
     def _convert_unit_to_mm(value, unit):
+        """
+        Convert the value from the desired unit to mm.
+        
+        :param value:
+        :param unit:
+        :return:
+        """
         if unit == "m":
             return value * 1000
         elif unit == "km":
@@ -103,6 +166,11 @@ class MotionMinder:
         return value
 
     def _return_odometer(self):
+        """
+        Return the odometer value to the user.
+        
+        :return:
+        """
         result = ""
         for axis in self._odometer:
             raw_value = self._odometer[axis]
@@ -125,6 +193,14 @@ class MotionMinder:
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value, axes, unit):
+        """
+        Set the odometer values.
+        
+        :param value:
+        :param axes:
+        :param unit:
+        :return:
+        """
         if unit not in ["mm", "m", "km"]:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
@@ -139,6 +215,14 @@ class MotionMinder:
         self._return_odometer()
 
     def _set_maintenance(self, value, axes, unit):
+        """
+        Set the maintenance values.
+        
+        :param value:
+        :param axes:
+        :param unit:
+        :return:
+        """
         if unit not in ["mm", "m", "km"]:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
@@ -153,4 +237,10 @@ class MotionMinder:
 
 
 def load_config(config):
+    """
+    klippy calls this function to load the plugin.
+    
+    :param config:
+    :return:
+    """
     return MotionMinder(config)
