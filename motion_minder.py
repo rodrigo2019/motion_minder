@@ -25,7 +25,7 @@ class MotionMinder:
             self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
-
+    
         self._thread = Thread(target=self._motion_minder_thread)
         self._thread.daemon = True
         self._thread.start()
@@ -44,19 +44,20 @@ class MotionMinder:
         kinematics = self._toolhead.get_kinematics()
         steppers = kinematics.get_steppers()
 
+        axis_idx = {"x": 0, "y": 1, "z": 2}
         for stepper in steppers:
             stepper_name = stepper.get_name()
             stepper_axis = stepper_name.split("_")[1]
             if stepper_axis in self._steppers:
                 self._steppers[stepper_axis] = stepper
-                self._position[stepper_axis] = stepper.get_mcu_position() * stepper.get_step_dist()
+                self._position[stepper_axis] = self._toolhead.get_position()[axis_idx[stepper_axis]]
                 self._steppers[stepper_axis].add_active_callback(self._configure_callback(stepper_axis))
-
+                
     def _configure_callback(self, axis):
+        axis_idx = {"x": 0, "y": 1, "z": 2}[axis]
 
         def callback(_):
-            current_position = self._steppers[axis].get_mcu_position()
-            current_position *= self._steppers[axis].get_step_dist()
+            current_position = self._toolhead.get_position()[axis_idx]
             delta = abs(current_position - self._position[axis])
             self._position[axis] = current_position
             self._odometer[axis] += delta
