@@ -1,7 +1,7 @@
 import os
 import shelve
 import time
-from threading import Thread
+from threading import Thread, Lock
 
 _db_name = "motion_minder.dbm"
 
@@ -19,6 +19,8 @@ class MotionMinder:
         self._db_fname = os.path.dirname(self._db_fname)  # go back 1 folder level
         self._db_fname = os.path.join(self._db_fname, "database", _db_name)
 
+        self._lock = Lock()
+
         with shelve.open(self._db_fname) as db:
             self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
@@ -33,7 +35,7 @@ class MotionMinder:
     def _motion_minder_thread(self):
         while True:
             time.sleep(5)
-            with shelve.open(self._db_fname) as db:
+            with shelve.open(self._db_fname) as db, self._lock:
                 db["odometer"] = self._odometer
 
     def _get_toolhead(self):
@@ -97,7 +99,7 @@ class MotionMinder:
             unit = self._get_recommended_unit(raw_value)
             value = self._convert_mm_to_unit(raw_value, unit)
             result += f"{axis.upper()}: {value:.3f} {unit}\n"
-            with shelve.open(self._db_fname) as db:
+            with shelve.open(self._db_fname) as db, self._lock:
                 next_maintenance = db.get(f"next_maintenance_{axis}", None)
                 if next_maintenance is not None and next_maintenance > value:
                     unit = self._get_recommended_unit(next_maintenance - raw_value)
@@ -115,14 +117,13 @@ class MotionMinder:
         if unit not in ["mm", "m", "km"]:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
-        if unit == "m":
-            value *= 1_000
-        elif unit == "km":
-            value *= 1_000_000
+        value = self._convert_mm_to_unit(value, unit)
         for axis in axes.lower():
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
             self._odometer[axis] = value
+            with shelve.open(self._db_fname) as db, self._lock:
+                db[f"odometer_{axis}"] = value
         self._return_odometer()
 
     def _set_maintenance(self, value, axes, unit):
@@ -136,7 +137,7 @@ class MotionMinder:
         for axis in axes.lower():
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
-            with shelve.open(self._db_fname) as db:
+            with shelve.open(self._db_fname) as db, self._lock:
                 db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
                 db[f"maintenance_{axis}"] = value
 
