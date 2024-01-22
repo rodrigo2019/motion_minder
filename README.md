@@ -39,6 +39,7 @@ Follow these steps to install the Motion Minder in your printer:
    origin: https://github.com/rodrigo2019/motion_minder.git
    primary_branch: main
    install_script: install.sh
+   managed_services: klipper
    ```
 
 ## Usage
