@@ -71,6 +71,22 @@ class MotionMinder:
             self._return_odometer()
         elif set_value is not None:
             self._set_odometer(set_value, axes, unit)
+        elif set_maintenance is not None:
+            self._set_maintenance(set_maintenance, axes, unit)
+
+    def _get_recommended_unit(self, value):
+        if value < 1000:
+            return "mm"
+        elif value < 1000000:
+            return "m"
+        return "km"
+
+    def _convert_mm_to_unit(self, value, unit):
+        if unit == "m":
+            return value / 1000
+        elif unit == "km":
+            return value / 1000000
+        return value
 
     def _return_odometer(self):
         result = ""
