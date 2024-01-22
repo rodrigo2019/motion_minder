@@ -3,7 +3,7 @@ import shelve
 import time
 from threading import Thread, Lock
 
-_db_name = "motion_minder.dbm"
+_DB_NAME = "motion_minder.dbm"
 
 
 class MotionMinder:
@@ -17,7 +17,7 @@ class MotionMinder:
 
         self._db_fname = os.path.split(self._printer.get_start_args().get("config_file", ""))[0]
         self._db_fname = os.path.dirname(self._db_fname)  # go back 1 folder level
-        self._db_fname = os.path.join(self._db_fname, "database", _db_name)
+        self._db_fname = os.path.join(self._db_fname, "database", _DB_NAME)
 
         self._lock = Lock()
 
@@ -35,8 +35,9 @@ class MotionMinder:
     def _motion_minder_thread(self):
         while True:
             time.sleep(5)
-            with shelve.open(self._db_fname) as db, self._lock:
-                db["odometer"] = self._odometer
+            with self._lock:
+                with shelve.open(self._db_fname) as db:
+                    db["odometer"] = self._odometer
 
     def _get_toolhead(self):
         self._toolhead = self._printer.lookup_object('toolhead')
@@ -107,18 +108,19 @@ class MotionMinder:
             unit = self._get_recommended_unit(raw_value)
             value = self._convert_mm_to_unit(raw_value, unit)
             result += f"{axis.upper()}: {value:.3f} {unit}\n"
-            with shelve.open(self._db_fname) as db, self._lock:
-                next_maintenance = db.get(f"next_maintenance_{axis}", None)
-                if next_maintenance is not None and next_maintenance > value:
-                    unit = self._get_recommended_unit(next_maintenance - raw_value)
-                    next_maintenance = self._convert_mm_to_unit(next_maintenance - raw_value, unit)
-                    result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
-                elif next_maintenance is not None:
-                    unit = self._get_recommended_unit(raw_value - next_maintenance)
-                    next_maintenance = self._convert_mm_to_unit(raw_value - next_maintenance, unit)
-                    result += f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
-                else:
-                    result += f"  Maintenance not set.\n"
+            with self._lock:
+                with shelve.open(self._db_fname) as db:
+                    next_maintenance = db.get(f"next_maintenance_{axis}", None)
+                    if next_maintenance is not None and next_maintenance > value:
+                        unit = self._get_recommended_unit(next_maintenance - raw_value)
+                        next_maintenance = self._convert_mm_to_unit(next_maintenance - raw_value, unit)
+                        result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
+                    elif next_maintenance is not None:
+                        unit = self._get_recommended_unit(raw_value - next_maintenance)
+                        next_maintenance = self._convert_mm_to_unit(raw_value - next_maintenance, unit)
+                        result += f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
+                    else:
+                        result += "  Maintenance not set.\n"
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value, axes, unit):
@@ -130,8 +132,9 @@ class MotionMinder:
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
             self._odometer[axis] = value
-            with shelve.open(self._db_fname) as db, self._lock:
-                db[f"odometer_{axis}"] = value
+            with self._lock:
+                with shelve.open(self._db_fname) as db:
+                    db[f"odometer_{axis}"] = value
         self._return_odometer()
 
     def _set_maintenance(self, value, axes, unit):
@@ -142,9 +145,10 @@ class MotionMinder:
         for axis in axes.lower():
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
-            with shelve.open(self._db_fname) as db, self._lock:
-                db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
-                db[f"maintenance_{axis}"] = value
+            with self._lock:
+                with shelve.open(self._db_fname) as db:
+                    db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
+                    db[f"maintenance_{axis}"] = value
 
 
 def load_config(config):
