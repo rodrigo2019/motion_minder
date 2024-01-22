@@ -92,6 +92,14 @@ class MotionMinder:
             return value / 1000000
         return value
 
+    @staticmethod
+    def _convert_unit_to_mm(value, unit):
+        if unit == "m":
+            return value * 1000
+        elif unit == "km":
+            return value * 1000000
+        return value
+
     def _return_odometer(self):
         result = ""
         for axis in self._odometer:
@@ -117,7 +125,7 @@ class MotionMinder:
         if unit not in ["mm", "m", "km"]:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
-        value = self._convert_mm_to_unit(value, unit)
+        value = self._convert_unit_to_mm(value, unit)
         for axis in axes.lower():
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
@@ -130,10 +138,7 @@ class MotionMinder:
         if unit not in ["mm", "m", "km"]:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
-        if unit == "m":
-            value *= 1_000
-        elif unit == "km":
-            value *= 1_000_000
+        value = self._convert_unit_to_mm(value, unit)
         for axis in axes.lower():
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
