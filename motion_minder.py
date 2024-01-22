@@ -101,7 +101,7 @@ class MotionMinder:
         :return:
         """
 
-        def wrapper(newpos:list, speed:Union[int, float]):
+        def wrapper(newpos: list, speed: Union[int, float]):
             for i, axis in enumerate("xyz"):
                 if self._ignore_position:
                     break
