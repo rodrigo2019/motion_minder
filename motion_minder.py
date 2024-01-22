@@ -74,14 +74,16 @@ class MotionMinder:
         elif set_maintenance is not None:
             self._set_maintenance(set_maintenance, axes, unit)
 
-    def _get_recommended_unit(self, value):
+    @staticmethod
+    def _get_recommended_unit(value):
         if value < 1000:
             return "mm"
         elif value < 1000000:
             return "m"
         return "km"
 
-    def _convert_mm_to_unit(self, value, unit):
+    @staticmethod
+    def _convert_mm_to_unit(value, unit):
         if unit == "m":
             return value / 1000
         elif unit == "km":
