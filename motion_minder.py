@@ -35,6 +35,7 @@ class MotionMinder:
         self._db_fname = os.path.join(self._db_fname, "database", _DB_NAME)
 
         self._lock = Lock()
+        self._update_db = False
 
         self._ignore_position = False
 
@@ -91,6 +92,7 @@ class MotionMinder:
             with self._lock:
                 with shelve.open(self._db_fname) as db:
                     db["odometer"] = self._odometer
+                    self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
         """
@@ -108,6 +110,7 @@ class MotionMinder:
                 if newpos[i] != self._position[axis]:
                     self._odometer[axis] += abs(newpos[i] - self._position[axis])
                     self._position[axis] = newpos[i]
+                    self._update_db = True
             return func(newpos, speed)
 
         return wrapper
