@@ -154,10 +154,10 @@ class MoonrakerInterface:
         """
         if limit is None:
             limit = requests.get(
-                f"http://{self._moonraker_address}/server/history/list?limit=1", timeout=1
+                f"http://{self._moonraker_address}/server/history/list?limit=1", timeout=10
             ).json()["result"]["count"]
         jobs = requests.get(
-            f"http://{self._moonraker_address}/server/history/list?limit={limit}", timeout=1
+            f"http://{self._moonraker_address}/server/history/list?limit={limit}", timeout=600
         ).json()["result"]["jobs"]
         return jobs
 
