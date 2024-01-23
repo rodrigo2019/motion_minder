@@ -32,7 +32,9 @@ class MotionMinder:
         self._db_fname = self._printer.get_start_args().get("config_file", "")
         self._db_fname = os.path.split(self._db_fname)[0]
         self._db_fname = os.path.dirname(self._db_fname)  # go back 1 folder level
-        self._db_fname = os.path.join(self._db_fname, "database", _DB_NAME)
+        self._db_fname = os.path.join(self._db_fname, "database")
+        os.makedirs(os.path.join(self._db_fname), exist_ok=True)
+        self._db_fname = os.path.join(self._db_fname, _DB_NAME)
 
         self._lock = Lock()
         self._update_db = False
