@@ -206,7 +206,7 @@ class MotionMinder:
             with self._lock:
                 with shelve.open(self._db_fname) as db:
                     next_maintenance = db.get(f"next_maintenance_{axis}", None)
-                    if next_maintenance is not None and next_maintenance > value:
+                    if next_maintenance is not None and next_maintenance > raw_value:
                         unit = self._get_recommended_unit(next_maintenance - raw_value)
                         next_maintenance = self._convert_mm_to_unit(
                             next_maintenance - raw_value, unit
