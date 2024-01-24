@@ -60,7 +60,7 @@ class MotionMinder:
             desc="Get/set odometer parameters.",
         )
 
-    def _home_begin(self, *args, **kwargs) -> None:
+    def _home_begin(self, *args, **kwargs) -> None:  # pylint: disable=unused-argument
         """
         This is called when the toolhead starts homing and sets a flag to ignore the
             position in our decorator.
@@ -71,7 +71,7 @@ class MotionMinder:
         """
         self._ignore_position = True
 
-    def _home_end(self, *args, **kwargs) -> None:
+    def _home_end(self, *args, **kwargs) -> None:  # pylint: disable=unused-argument
         """
         This is called when the toolhead finishes homing and clears the flag to
             ignore the position in our decorator.
@@ -138,8 +138,7 @@ class MotionMinder:
         params = gcmd.get_command_parameters()
         for key in params:
             if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT"]:
-                raise self._gcode.error(f"Invalid parameter '{key}'.")
-            
+                raise self._gcode.error(f"Invalid parameter '{key}'.")  
         set_odometer = gcmd.get_float("SET_ODOMETER", None)
         set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
         axes = gcmd.get("AXES", "xyz")
