@@ -91,10 +91,11 @@ class MotionMinder:
         """
         while True:
             time.sleep(5)
-            with self._lock:
-                with shelve.open(self._db_fname) as db:
-                    db["odometer"] = self._odometer
-                    self._update_db = False
+            if self._update_db:
+                with self._lock:
+                    with shelve.open(self._db_fname) as db:
+                        db["odometer"] = self._odometer
+                        self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
         """
