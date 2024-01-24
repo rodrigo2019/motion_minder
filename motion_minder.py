@@ -212,20 +212,17 @@ class MotionMinder:
                     result += f"{axis.upper()}: {value:.3f} {unit}\n"
 
                     next_maintenance = db.get(f"next_maintenance_{axis}", None)
-                    if next_maintenance is not None and next_maintenance > raw_value:
+                    if next_maintenance is not None:
                         unit = self._get_recommended_unit(next_maintenance - raw_value)
                         next_maintenance = self._convert_mm_to_unit(
                             next_maintenance - raw_value, unit
                         )
-                        result += (
-                            f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
-                        )
-                    elif next_maintenance is not None:
-                        unit = self._get_recommended_unit(raw_value - next_maintenance)
-                        next_maintenance = self._convert_mm_to_unit(
-                            raw_value - next_maintenance, unit
-                        )
-                        result += f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
+                        if next_maintenance > raw_value:
+                            result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
+                        else:
+                            result += (
+                                f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
+                            )
                     else:
                         result += "  Maintenance not set.\n"
         self._gcode.respond_info(result)
