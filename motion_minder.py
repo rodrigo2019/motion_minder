@@ -203,13 +203,14 @@ class MotionMinder:
         :return:
         """
         result = ""
-        for axis in self._odometer:
-            raw_value = self._odometer[axis]
-            unit = self._get_recommended_unit(raw_value)
-            value = self._convert_mm_to_unit(raw_value, unit)
-            result += f"{axis.upper()}: {value:.3f} {unit}\n"
-            with self._lock:
-                with shelve.open(self._db_fname) as db:
+        with self._lock:
+            with shelve.open(self._db_fname) as db:
+                for axis in self._odometer:
+                    raw_value = self._odometer[axis]
+                    unit = self._get_recommended_unit(raw_value)
+                    value = self._convert_mm_to_unit(raw_value, unit)
+                    result += f"{axis.upper()}: {value:.3f} {unit}\n"
+
                     next_maintenance = db.get(f"next_maintenance_{axis}", None)
                     if next_maintenance is not None and next_maintenance > raw_value:
                         unit = self._get_recommended_unit(next_maintenance - raw_value)
@@ -242,12 +243,12 @@ class MotionMinder:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
         value = self._convert_unit_to_mm(value, unit)
-        for axis in axes.lower():
-            if axis not in "xyz":
-                raise self._gcode.error(f"Invalid '{axis}' axis.")
-            self._odometer[axis] = value
-            with self._lock:
-                with shelve.open(self._db_fname) as db:
+        with self._lock:
+            with shelve.open(self._db_fname) as db:
+                for axis in axes.lower():
+                    if axis not in "xyz":
+                        raise self._gcode.error(f"Invalid '{axis}' axis.")
+                    self._odometer[axis] = value
                     db[f"odometer_{axis}"] = value
         self._return_odometer()
 
@@ -264,11 +265,11 @@ class MotionMinder:
             raise self._gcode.error(f"Invalid unit '{unit}'.")
 
         value = self._convert_unit_to_mm(value, unit)
-        for axis in axes.lower():
-            if axis not in "xyz":
-                raise self._gcode.error(f"Invalid '{axis}' axis.")
-            with self._lock:
-                with shelve.open(self._db_fname) as db:
+        with self._lock:
+            with shelve.open(self._db_fname) as db:
+                for axis in axes.lower():
+                    if axis not in "xyz":
+                        raise self._gcode.error(f"Invalid '{axis}' axis.")
                     db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
                     db[f"maintenance_{axis}"] = value
 
