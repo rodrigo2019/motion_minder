@@ -19,7 +19,7 @@ class MotionMinder:
 
     def __init__(self, config):
         """
-        
+
         :param config: The klippy config object.
         """
         self._config = config
@@ -139,7 +139,7 @@ class MotionMinder:
         params = gcmd.get_command_parameters()
         for key in params:
             if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT"]:
-                raise self._gcode.error(f"Invalid parameter '{key}'.")  
+                raise self._gcode.error(f"Invalid parameter '{key}'.")
         set_odometer = gcmd.get_float("SET_ODOMETER", None)
         set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
         axes = gcmd.get("AXES", "xyz")
