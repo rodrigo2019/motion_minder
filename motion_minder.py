@@ -26,7 +26,6 @@ class MotionMinder:
         self._printer = config.get_printer()
         self._toolhead = None
         self._gcode = self._printer.lookup_object("gcode")
-        self._steppers = {"x": None, "y": None, "z": None}
         self._position = {"x": 0, "y": 0, "z": 0}
 
         self._db_fname = self._printer.get_start_args().get("config_file", "")
