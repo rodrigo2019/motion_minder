@@ -247,6 +247,7 @@ class MotionMinder:
                     raise self._gcode.error(f"Invalid '{axis}' axis.")
                 self._odometer[axis] = value
                 self._db[f"odometer_{axis}"] = value
+            self._db.sync()
         self._return_odometer()
 
     def _set_maintenance(self, value: Union[int, float], axes: str, unit: str):
