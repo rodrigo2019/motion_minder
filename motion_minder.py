@@ -34,14 +34,14 @@ class MotionMinder:
         self._db_fname = os.path.join(self._db_fname, "database")
         os.makedirs(os.path.join(self._db_fname), exist_ok=True)
         self._db_fname = os.path.join(self._db_fname, _DB_NAME)
+        self._db = shelve.open(self._db_fname, writeback=True)
 
         self._lock = Lock()
         self._update_db = False
-
         self._ignore_position = False
 
-        with shelve.open(self._db_fname) as db:
-            self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
+        self._odometer = self._db.get("odometer", {"x": 0, "y": 0, "z": 0})
+        self._db["odometer"] = self._odometer
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
         self._printer.register_event_handler(
@@ -58,6 +58,9 @@ class MotionMinder:
             self._cmd_motion_minder,
             desc="Get/set odometer parameters.",
         )
+
+    def __del__(self):
+        self._db.close()
 
     def _home_begin(self, *args, **kwargs) -> None:  # pylint: disable=unused-argument
         """
@@ -92,9 +95,10 @@ class MotionMinder:
             time.sleep(5)
             if self._update_db:
                 with self._lock:
-                    with shelve.open(self._db_fname) as db:
-                        db["odometer"] = self._odometer
-                        self._update_db = False
+                    # do not set the odometer to the db, as it is already set in the constructor and because its mutable
+                    # and we are using the writeback=True flag in the shelve.open function, we just need to sync the db.
+                    self._db.sync()
+                    self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
         """
@@ -203,27 +207,26 @@ class MotionMinder:
         """
         result = ""
         with self._lock:
-            with shelve.open(self._db_fname) as db:
-                for axis in self._odometer:
-                    raw_value = self._odometer[axis]
-                    unit = self._get_recommended_unit(raw_value)
-                    value = self._convert_mm_to_unit(raw_value, unit)
-                    result += f"{axis.upper()}: {value:.3f} {unit}\n"
+            for axis in self._odometer:
+                raw_value = self._odometer[axis]
+                unit = self._get_recommended_unit(raw_value)
+                value = self._convert_mm_to_unit(raw_value, unit)
+                result += f"{axis.upper()}: {value:.3f} {unit}\n"
 
-                    next_maintenance = db.get(f"next_maintenance_{axis}", None)
-                    if next_maintenance is not None:
-                        unit = self._get_recommended_unit(next_maintenance - raw_value)
-                        next_maintenance = self._convert_mm_to_unit(
-                            next_maintenance - raw_value, unit
-                        )
-                        if next_maintenance > raw_value:
-                            result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
-                        else:
-                            result += (
-                                f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
-                            )
+                next_maintenance = self._db.get(f"next_maintenance_{axis}", None)
+                if next_maintenance is not None:
+                    unit = self._get_recommended_unit(next_maintenance - raw_value)
+                    next_maintenance = self._convert_mm_to_unit(
+                        next_maintenance - raw_value, unit
+                    )
+                    if next_maintenance > raw_value:
+                        result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
                     else:
-                        result += "  Maintenance not set.\n"
+                        result += (
+                            f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
+                        )
+                else:
+                    result += "  Maintenance not set.\n"
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value: Union[int, float], axes: str, unit: str) -> None:
@@ -240,12 +243,11 @@ class MotionMinder:
 
         value = self._convert_unit_to_mm(value, unit)
         with self._lock:
-            with shelve.open(self._db_fname) as db:
-                for axis in axes.lower():
-                    if axis not in "xyz":
-                        raise self._gcode.error(f"Invalid '{axis}' axis.")
-                    self._odometer[axis] = value
-                    db[f"odometer_{axis}"] = value
+            for axis in axes.lower():
+                if axis not in "xyz":
+                    raise self._gcode.error(f"Invalid '{axis}' axis.")
+                self._odometer[axis] = value
+                self._db[f"odometer_{axis}"] = value
         self._return_odometer()
 
     def _set_maintenance(self, value: Union[int, float], axes: str, unit: str):
@@ -262,12 +264,11 @@ class MotionMinder:
 
         value = self._convert_unit_to_mm(value, unit)
         with self._lock:
-            with shelve.open(self._db_fname) as db:
-                for axis in axes.lower():
-                    if axis not in "xyz":
-                        raise self._gcode.error(f"Invalid '{axis}' axis.")
-                    db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
-                    db[f"maintenance_{axis}"] = value
+            for axis in axes.lower():
+                if axis not in "xyz":
+                    raise self._gcode.error(f"Invalid '{axis}' axis.")
+                self._db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
+                self._db[f"maintenance_{axis}"] = value
 
 
 def load_config(config):
