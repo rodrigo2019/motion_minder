@@ -5,7 +5,7 @@ import time
 from threading import Thread, Lock
 from typing import Union
 
-_DB_NAME = "motion_minder.dbm"
+_DB_NAME = "motion_minder"
 
 
 class MotionMinder:
