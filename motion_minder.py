@@ -41,7 +41,6 @@ class MotionMinder:
         self._ignore_position = False
 
         self._odometer = self._db.get("odometer", {"x": 0, "y": 0, "z": 0})
-        self._db["odometer"] = self._odometer
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
         self._printer.register_event_handler(
