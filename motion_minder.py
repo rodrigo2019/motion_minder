@@ -101,9 +101,7 @@ class MotionMinder:
             time.sleep(5)
             if self._update_db:
                 with self._lock:
-                    # do not set the odometer to the db, as it is already set in the constructor and because its mutable
-                    # and we are using the writeback=True flag in the shelve.open function, we just need to sync the db.
-                    self._db["odometer"] = self._odometer
+                    self._db["odometer"] = self._odometer  # write the odometer to disk
                     self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
