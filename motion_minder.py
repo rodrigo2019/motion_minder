@@ -34,7 +34,7 @@ class MotionMinder:
         self._db_fname = os.path.join(self._db_fname, "database")
         os.makedirs(os.path.join(self._db_fname), exist_ok=True)
         self._db_fname = os.path.join(self._db_fname, _DB_NAME)
-        self._db = shelve.open(self._db_fname, writeback=True)
+        self._db = shelve.open(self._db_fname)
 
         self._lock = Lock()
         self._update_db = False
@@ -96,7 +96,7 @@ class MotionMinder:
                 with self._lock:
                     # do not set the odometer to the db, as it is already set in the constructor and because its mutable
                     # and we are using the writeback=True flag in the shelve.open function, we just need to sync the db.
-                    self._db.sync()
+                    self._db["odometer"] = self._odometer
                     self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
@@ -247,7 +247,7 @@ class MotionMinder:
                     raise self._gcode.error(f"Invalid '{axis}' axis.")
                 self._odometer[axis] = value
                 self._db[f"odometer_{axis}"] = value
-            self._db.sync()
+            self._db["odometer"] = self._odometer
         self._return_odometer()
 
     def _set_maintenance(self, value: Union[int, float], axes: str, unit: str):
