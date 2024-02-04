@@ -1,4 +1,6 @@
 """This file may be distributed under the terms of the GNU GPLv3 license"""
+import dbm
+import dbm.dumb
 import os
 import shelve
 import time
@@ -34,7 +36,12 @@ class MotionMinder:
         self._db_fname = os.path.join(self._db_fname, "database")
         os.makedirs(os.path.join(self._db_fname), exist_ok=True)
         self._db_fname = os.path.join(self._db_fname, _DB_NAME)
+
+        dbm._defaultmod = dbm.dumb
+        dbm._modules["dbm.dumb"] = dbm.dumb
         self._db = shelve.open(self._db_fname, writeback=True)
+        dbm._defaultmod = None
+        dbm._modules = {}
 
         self._lock = Lock()
         self._update_db = False
