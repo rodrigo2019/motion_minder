@@ -145,19 +145,28 @@ class MotionMinder:
         """
         params = gcmd.get_command_parameters()
         for key in params:
-            if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT"]:
+            if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT", "RELATIVE"]:
                 raise self._gcode.error(f"Invalid parameter '{key}'.")
         set_odometer = gcmd.get_float("SET_ODOMETER", None)
         set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
         axes = gcmd.get("AXES", "xyz")
         unit = gcmd.get("UNIT", "km")
+        relative = gcmd.get("RELATIVE", False)
+        true_values = ["true", "yes", "1"]
+        false_values = ["false", "no", "0"]
+        if isinstance(relative, str):
+            if relative.lower() in true_values + false_values:
+                relative = relative.lower() in true_values
+            else:
+                valid_values = ", ".join(true_values + false_values)
+                raise self._gcode.error(f"Invalid value '{relative}' for 'RELATIVE'. valid values are {valid_values}.")
 
         if set_odometer is None and set_maintenance is None:
             self._return_odometer()
         elif set_odometer is not None:
-            self._set_odometer(set_odometer, axes, unit)
+            self._set_odometer(set_odometer, axes, unit, relative)
         elif set_maintenance is not None:
-            self._set_maintenance(set_maintenance, axes, unit)
+            self._set_maintenance(set_maintenance, axes, unit, relative)
 
     @staticmethod
     def _get_recommended_unit(value: Union[int, float]) -> str:
@@ -233,13 +242,14 @@ class MotionMinder:
                     result += "  Maintenance not set.\n"
         self._gcode.respond_info(result)
 
-    def _set_odometer(self, value: Union[int, float], axes: str, unit: str) -> None:
+    def _set_odometer(self, value: Union[int, float], axes: str, unit: str, relative: bool) -> None:
         """
         Set the odometer values.
 
         :param value: The value in the desired unit. It can be 'mm', 'm' or 'km'.
         :param axes: The axes to set. It can be 'x', 'y', 'z' or any combination of them.
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
+        :param relative: If True the value is added to the current odometer value.
         :return:
         """
         if unit not in ["mm", "m", "km"]:
@@ -250,18 +260,19 @@ class MotionMinder:
             for axis in axes.lower():
                 if axis not in "xyz":
                     raise self._gcode.error(f"Invalid '{axis}' axis.")
-                self._odometer[axis] = value
-                self._db[f"odometer_{axis}"] = value
+                add_value = self._odometer[axis] if relative else 0
+                self._odometer[axis] = value + add_value
             self._db["odometer"] = self._odometer
         self._return_odometer()
 
-    def _set_maintenance(self, value: Union[int, float], axes: str, unit: str):
+    def _set_maintenance(self, value: Union[int, float], axes: str, unit: str, relative: bool) -> None:
         """
         Set the maintenance values.
 
         :param value: The value in the desired unit. It can be 'mm', 'm' or 'km'.
         :param axes: The axes to set. It can be 'x', 'y', 'z' or any combination of them.
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
+        :param relative: If True the value is added to the current maintenance value.
         :return:
         """
         if unit not in ["mm", "m", "km"]:
@@ -272,7 +283,8 @@ class MotionMinder:
             for axis in axes.lower():
                 if axis not in "xyz":
                     raise self._gcode.error(f"Invalid '{axis}' axis.")
-                self._db[f"next_maintenance_{axis}"] = value + self._odometer[axis]
+                add_value = self._odometer[axis] if relative else 0
+                self._db[f"next_maintenance_{axis}"] = value + add_value
                 self._db[f"maintenance_{axis}"] = value
 
 
