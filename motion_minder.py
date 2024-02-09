@@ -220,26 +220,27 @@ class MotionMinder:
         """
         result = ""
         with self._lock:
-            for axis in self._odometer:
-                raw_value = self._odometer[axis]
-                unit = self._get_recommended_unit(raw_value)
-                value = self._convert_mm_to_unit(raw_value, unit)
-                result += f"{axis.upper()}: {value:.3f} {unit}\n"
+            next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
+        for axis in self._odometer:
+            raw_value = self._odometer[axis]
+            unit = self._get_recommended_unit(raw_value)
+            value = self._convert_mm_to_unit(raw_value, unit)
+            result += f"{axis.upper()}: {value:.3f} {unit}\n"
 
-                next_maintenance = self._db.get(f"next_maintenance_{axis}", None)
-                if next_maintenance is not None:
-                    unit = self._get_recommended_unit(next_maintenance - raw_value)
-                    next_maintenance = self._convert_mm_to_unit(
-                        next_maintenance - raw_value, unit
-                    )
-                    if next_maintenance > raw_value:
-                        result += f"  Next maintenance in: {next_maintenance:.3f} {unit}\n"
-                    else:
-                        result += (
-                            f"  Maintenance due: {next_maintenance:.3f} {unit}\n"
-                        )
+            next_maintenance_axis = next_maintenance[axis]
+            if next_maintenance_axis is not None:
+                unit = self._get_recommended_unit(next_maintenance_axis - raw_value)
+                next_maintenance_axis = self._convert_mm_to_unit(
+                    next_maintenance_axis - raw_value, unit
+                )
+                if next_maintenance_axis > raw_value:
+                    result += f"  Next maintenance in: {next_maintenance_axis:.3f} {unit}\n"
                 else:
-                    result += "  Maintenance not set.\n"
+                    result += (
+                        f"  Maintenance due: {next_maintenance_axis:.3f} {unit}\n"
+                    )
+            else:
+                result += "  Maintenance not set.\n"
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value: Union[int, float], axes: str, unit: str, relative: bool) -> None:
@@ -280,12 +281,16 @@ class MotionMinder:
 
         value = self._convert_unit_to_mm(value, unit)
         with self._lock:
+            next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
+            maintenance_period = self._db.get(f"maintenance_period", {"x": None, "y": None, "z": None})
             for axis in axes.lower():
                 if axis not in "xyz":
                     raise self._gcode.error(f"Invalid '{axis}' axis.")
                 add_value = self._odometer[axis] if relative else 0
-                self._db[f"next_maintenance_{axis}"] = value + add_value
-                self._db[f"maintenance_{axis}"] = value
+                next_maintenance[axis] = value + add_value
+                maintenance_period[axis] = value
+            self._db[f"next_maintenance"] = next_maintenance
+            self._db[f"maintenance"] = maintenance_period
 
 
 def load_config(config):
