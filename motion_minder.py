@@ -328,6 +328,7 @@ class MotionMinder:
                 maintenance_period[axis] = value
             self._db[f"next_maintenance"] = next_maintenance
             self._db[f"maintenance"] = maintenance_period
+        self._return_odometer()
 
 
 def load_config(config):
