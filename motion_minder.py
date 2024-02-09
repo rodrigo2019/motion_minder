@@ -10,6 +10,61 @@ from typing import Union
 _DB_NAME = "motion_minder"
 
 
+class _Args:
+    def __init__(self, gcmd, gcode):
+        self._gcode = gcode
+        params = gcmd.get_command_parameters()
+        for key in params:
+            if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT", "RELATIVE"]:
+                raise self._gcode.error(f"Invalid parameter '{key}'.")
+
+        self.set_odometer = gcmd.get_float("SET_ODOMETER", None)
+        self.set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
+        self.axes = gcmd.get("AXES", "xyz").lower()
+        self.unit = gcmd.get("UNIT", None)
+        self.unit = self.unit.lower() if self.unit is not None else None
+        self.relative = gcmd.get("RELATIVE", False)
+
+        self.validate()
+
+    def validate(self):
+        for attr_name in dir(self):
+            if attr_name.startswith('val_') and callable(getattr(self, attr_name)):
+                getattr(self, attr_name)()
+
+    def val_set_odometer(self):
+        if self.set_odometer is not None and self.set_maintenance is not None:
+            raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
+
+    def val_set_maintenance(self):
+        if self.set_maintenance is not None and self.set_odometer is not None:
+            raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
+
+    def val_axes(self):
+        for axis in self.axes:
+            if axis not in "xyz":
+                raise self._gcode.error(f"Invalid '{axis}' axis.")
+        if len(self.axes) != len(set(self.axes)):
+            raise self._gcode.error(f"Duplicate axes.")
+
+    def val_unit(self):
+        if self.unit not in ["mm", "m", "km", None]:
+            raise self._gcode.error(f"Invalid unit '{self.unit}'. The valid units are 'mm', 'm' and 'km'.")
+
+    def val_relative(self):
+        true_values = ["true", "yes", "1"]
+        false_values = ["false", "no", "0"]
+        if isinstance(self.relative, str):
+            if self.relative.lower() in true_values + false_values:
+                self.relative = self.relative.lower() in true_values
+            else:
+                valid_values = ", ".join(true_values + false_values)
+                raise self._gcode.error(
+                    f"Invalid value '{self.relative}' for 'RELATIVE'. valid values are {valid_values}.")
+        if self.set_odometer is None and self.set_maintenance is None and isinstance(self.relative, str):
+            raise self._gcode.error("'RELATIVE' can only be used with 'SET_ODOMETER' or 'SET_MAINTENANCE'.")
+
+
 class MotionMinder:
     """
     This plugin keeps track of the distance traveled by the toolhead.
