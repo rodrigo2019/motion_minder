@@ -349,12 +349,10 @@ class MotionMinder:
         :return:
         """
         value = self._convert_unit_to_mm(value, unit)
+        for axis in axes:
+            add_value = self._odometer[axis] if relative else 0
+            self._odometer[axis] = value + add_value
         with self._lock:
-            for axis in axes.lower():
-                if axis not in "xyz":
-                    raise self._gcode.error(f"Invalid '{axis}' axis.")
-                add_value = self._odometer[axis] if relative else 0
-                self._odometer[axis] = value + add_value
             self._db["odometer"] = self._odometer
         self._return_odometer()
 
@@ -372,9 +370,7 @@ class MotionMinder:
         with self._lock:
             next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
             maintenance_period = self._db.get(f"maintenance_period", {"x": None, "y": None, "z": None})
-            for axis in axes.lower():
-                if axis not in "xyz":
-                    raise self._gcode.error(f"Invalid '{axis}' axis.")
+            for axis in axes:
                 add_value = self._odometer[axis] if relative else 0
                 next_maintenance[axis] = value + add_value
                 maintenance_period[axis] = value
