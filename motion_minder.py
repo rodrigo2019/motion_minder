@@ -12,6 +12,12 @@ _DB_NAME = "motion_minder"
 
 class _Args:
     def __init__(self, gcmd, gcode):
+        """
+        This class is used to validate the parameters of the MOTION_MINDER command.
+
+        :param gcmd: The gcode command provided by klippy.
+        :param gcode: The gcode object provided by klippy.
+        """
         self._gcode = gcode
         params = gcmd.get_command_parameters()
         for key in params:
@@ -27,31 +33,74 @@ class _Args:
 
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
+        """
+        Validate all parameters calling all methods that start with 'val_'.
+
+        :return:
+        """
         for attr_name in dir(self):
             if attr_name.startswith('val_') and callable(getattr(self, attr_name)):
                 getattr(self, attr_name)()
 
-    def val_set_odometer(self):
+    def val_set_odometer(self) -> None:
+        """
+        Validate the 'SET_ODOMETER' parameter.
+        Premises:
+            It cannot be used with 'SET_MAINTENANCE'.
+
+        :return:
+        """
         if self.set_odometer is not None and self.set_maintenance is not None:
             raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
 
-    def val_set_maintenance(self):
+    def val_set_maintenance(self) -> None:
+        """
+        Validate the 'SET_MAINTENANCE' parameter.
+        Premises:
+            It cannot be used with 'SET_ODOMETER'.
+
+        :return:
+        """
         if self.set_maintenance is not None and self.set_odometer is not None:
             raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
 
-    def val_axes(self):
+    def val_axes(self) -> None:
+        """
+        Validate the 'AXES' parameter.
+        Premises:
+            It must be a string with only 'x', 'y' and 'z'.
+            It cannot have duplicate axes (values).
+
+        :return:
+        """
         for axis in self.axes:
             if axis not in "xyz":
                 raise self._gcode.error(f"Invalid '{axis}' axis.")
         if len(self.axes) != len(set(self.axes)):
             raise self._gcode.error(f"Duplicate axes.")
 
-    def val_unit(self):
+    def val_unit(self) -> None:
+        """
+        Validate the 'UNIT' parameter.
+        Premises:
+            It must be a string with only 'mm', 'm' and 'km'.
+            It can be None by default and in this case it the motion minder will suggest the unit.
+
+        :return:
+        """
         if self.unit not in ["mm", "m", "km", None]:
             raise self._gcode.error(f"Invalid unit '{self.unit}'. The valid units are 'mm', 'm' and 'km'.")
 
-    def val_relative(self):
+    def val_relative(self) -> None:
+        """
+        Validate the 'RELATIVE' parameter.
+        Premises:
+            It must be a boolean.
+            The accepted values are 'true', 'yes', '1', 'false', 'no' and '0'.
+            It can only be used with 'SET_ODOMETER' or 'SET_MAINTENANCE'.
+        :return:
+        """
         true_values = ["true", "yes", "1"]
         false_values = ["false", "no", "0"]
         if isinstance(self.relative, str):
