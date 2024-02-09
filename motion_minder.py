@@ -253,7 +253,7 @@ class MotionMinder:
             return value * 1000000
         return value
 
-    def _return_odometer(self) -> None:
+    def _return_odometer(self, unit: Union[str, None] = None) -> None:
         """
         Return the odometer value to the user.
 
@@ -264,7 +264,8 @@ class MotionMinder:
             next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
         for axis in self._odometer:
             raw_value = self._odometer[axis]
-            unit = self._get_recommended_unit(raw_value)
+            if unit is None:
+                unit = self._get_recommended_unit(raw_value)
             value = self._convert_mm_to_unit(raw_value, unit)
             result += f"{axis.upper()}: {value:.3f} {unit}\n"
 
