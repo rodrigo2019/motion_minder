@@ -66,12 +66,23 @@ If you need, you can reset the odometer to a desired value:
 
 ```bash
 MOTION_MINDER SET_ODOMETER=100 AXES=xy UNIT=mm
-
 ```
 
 in the example above, the odometer will be set to 100km for the x and y axis.
 
-## Macro arguments
+Now, lets say you want to set the maintenance to 100km relative from your current odometer:
+
+```bash
+MOTION_MINDER SET_MAINTENANCE=100 RELATIVE=True
+```
+
+or 
+
+```bash
+ MOTION_MINDER SET_MAINTENANCE=100 RELATIVE=True AXES=xyz UNIT=km
+```
+
+## Module arguments
 
 The following arguments can be used to customize the behavior of the motion minder:
 
@@ -80,4 +91,5 @@ The following arguments can be used to customize the behavior of the motion mind
 | `SET_MAINTENANCE` | None    | A value to determine the remaining distance until the next maintenance. You can customize it using the `AXES` parameter to specify the desired axis and the `UNIT` parameter to set the measurement unit for the value. |
 | `SET_ODOMETER`    | None    | A value to set the odometer. You can customize it using the `AXES` parameter to specify the desired axis and the `UNIT` parameter to set the measurement unit for the value.                                            |
 | `AXES`            | "xyz"   | The axis to be used with `SET_MAINTENANCE` and `SET_ODOMETER`.  It can be 'x', 'y', 'z' or any combination of them.                                                                                                     |
-| `UNIT`            | "km"    | The unit to be used with `SET_MAINTENANCE` and `SET_ODOMETER`. It can be 'mm', 'm' or 'km'.                                                                                                                             |
+| `UNIT`            | None    | The unit to be used with `SET_MAINTENANCE` and `SET_ODOMETER` or alone. It can be 'mm', 'm' or 'km'. `SET_MAINTENANCE` and `SET_ODOMETER` will use "km" as default.                                                     |
+| `RELATIVE`        | False   | If set to `True`, the `SET_MAINTENANCE` and `SET_ODOMETER` values will be relative to the current odometer values.                                                                                                      |
