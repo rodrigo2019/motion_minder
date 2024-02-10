@@ -379,7 +379,7 @@ class MotionMinder:
         :param value: The value in the desired unit. It can be 'mm', 'm' or 'km'.
         :param axes: The axes to set. It can be 'x', 'y', 'z' or any combination of them.
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
-        :param relative: If True the value is added to the current maintenance value.
+        :param relative: If True the value will be the current odometer value plus the value.
         :return:
         """
         value = self._convert_unit_to_mm(value, unit)
