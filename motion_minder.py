@@ -18,11 +18,8 @@ class _Args:
         :param gcmd: The gcode command provided by klippy.
         :param gcode: The gcode object provided by klippy.
         """
+        self._gcmd = gcmd
         self._gcode = gcode
-        params = gcmd.get_command_parameters()
-        for key in params:
-            if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT", "RELATIVE"]:
-                raise self._gcode.error(f"Invalid parameter '{key}'.")
 
         self.set_odometer = gcmd.get_float("SET_ODOMETER", None)
         self.set_maintenance = gcmd.get_float("SET_MAINTENANCE", None)
@@ -42,6 +39,24 @@ class _Args:
         for attr_name in dir(self):
             if attr_name.startswith('val_') and callable(getattr(self, attr_name)):
                 getattr(self, attr_name)()
+
+    def val_input_parameters(self) -> None:
+        """
+        Validate the input parameters.
+        Premises:
+            The valid options are:
+                - 'SET_ODOMETER'
+                - 'SET_MAINTENANCE'
+                - 'AXES'
+                - 'UNIT'
+                - 'RELATIVE'
+
+        :return:
+        """
+        params = self._gcmd.get_command_parameters()
+        for key in params:
+            if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT", "RELATIVE"]:
+                raise self._gcode.error(f"Invalid parameter '{key}'.")
 
     def val_set_odometer(self) -> None:
         """
