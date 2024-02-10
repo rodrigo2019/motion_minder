@@ -74,19 +74,20 @@ class MoonrakerInterface:
             self._websocket = None
             self._connect_to_websocket()
 
-    def get_key_value(self, key: str) -> Union[str, None]:
+    def get_key_value(self, key: str, default: any = None) -> Union[str, None]:
         """
         Get the value of a key from the database.
 
         :param key: The key to get the value of.
+        :param default: The default value to return if the key does not exist.
         :return: The value of the key or None if the key does not exist.
         """
         base_url = f"http://{self._moonraker_address}/server/database/item?namespace={self._namespace}"
         response = requests.get(f"{base_url}&key={key}", timeout=3).json()
         if "error" in response:
-            return None
+            return default
         else:
-            return response.get("result", {}).get("value", None)
+            return response.get("result", {}).get("value", default)
 
     def set_key_value(
         self, key: str, value: Union[str, int, float]
@@ -336,9 +337,9 @@ class MotionMinder(MoonrakerInterface):
 
         :return: The odometer values, in the order x, y, z.
         """
-        x = float(self.get_key_value("odometer_x"))
-        y = float(self.get_key_value("odometer_y"))
-        z = float(self.get_key_value("odometer_z"))
+        x = float(self.get_key_value("odometer_x", 0))
+        y = float(self.get_key_value("odometer_y", 0))
+        z = float(self.get_key_value("odometer_z", 0))
         return x, y, z
 
     def add_mileage(
