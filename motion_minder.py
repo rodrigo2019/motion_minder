@@ -28,19 +28,19 @@ class _Args:
         self.unit = self.unit.lower() if self.unit is not None else None
         self.relative = gcmd.get("RELATIVE", False)
 
-        self.validate()
+        self._validate()
 
-    def validate(self) -> None:
+    def _validate(self) -> None:
         """
         Validate all parameters calling all methods that start with 'val_'.
 
         :return:
         """
         for attr_name in dir(self):
-            if attr_name.startswith('val_') and callable(getattr(self, attr_name)):
+            if attr_name.startswith('_val_') and callable(getattr(self, attr_name)):
                 getattr(self, attr_name)()
 
-    def val_input_parameters(self) -> None:
+    def _val_input_parameters(self) -> None:
         """
         Validate the input parameters.
         Premises:
@@ -58,7 +58,7 @@ class _Args:
             if key not in ["SET_ODOMETER", "SET_MAINTENANCE", "AXES", "UNIT", "RELATIVE"]:
                 raise self._gcode.error(f"Invalid parameter '{key}'.")
 
-    def val_set_odometer(self) -> None:
+    def _val_set_odometer(self) -> None:
         """
         Validate the 'SET_ODOMETER' parameter.
         Premises:
@@ -69,7 +69,7 @@ class _Args:
         if self.set_odometer is not None and self.set_maintenance is not None:
             raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
 
-    def val_set_maintenance(self) -> None:
+    def _val_set_maintenance(self) -> None:
         """
         Validate the 'SET_MAINTENANCE' parameter.
         Premises:
@@ -80,7 +80,7 @@ class _Args:
         if self.set_maintenance is not None and self.set_odometer is not None:
             raise self._gcode.error("Only one of 'SET_ODOMETER' or 'SET_MAINTENANCE' can be used.")
 
-    def val_axes(self) -> None:
+    def _val_axes(self) -> None:
         """
         Validate the 'AXES' parameter.
         Premises:
@@ -95,7 +95,7 @@ class _Args:
         if len(self.axes) != len(set(self.axes)):
             raise self._gcode.error(f"Duplicate axes.")
 
-    def val_unit(self) -> None:
+    def _val_unit(self) -> None:
         """
         Validate the 'UNIT' parameter.
         Premises:
@@ -107,7 +107,7 @@ class _Args:
         if self.unit not in ["mm", "m", "km", None]:
             raise self._gcode.error(f"Invalid unit '{self.unit}'. The valid units are 'mm', 'm' and 'km'.")
 
-    def val_relative(self) -> None:
+    def _val_relative(self) -> None:
         """
         Validate the 'RELATIVE' parameter.
         Premises:
