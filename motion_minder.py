@@ -99,6 +99,7 @@ class _Args:
             It must be a boolean.
             The accepted values are 'true', 'yes', '1', 'false', 'no' and '0'.
             It can only be used with 'SET_ODOMETER' or 'SET_MAINTENANCE'.
+
         :return:
         """
         true_values = ["true", "yes", "1"]
@@ -120,7 +121,6 @@ class MotionMinder:
     It works by decorating the toolhead.move function and keeping track of the
         position before the move. Moves executed by probing or homing are partially
         ignored, as part of the move do not completely follow de toolhead.move function.
-
     """
 
     def __init__(self, config):
@@ -325,9 +325,7 @@ class MotionMinder:
                 unit = (self._get_recommended_unit(next_maintenance_axis - raw_value)
                         if required_unit is None
                         else required_unit)
-                next_maintenance_axis = self._convert_mm_to_unit(
-                    next_maintenance_axis - raw_value, unit
-                )
+                next_maintenance_axis = self._convert_mm_to_unit(next_maintenance_axis - raw_value, unit)
                 if next_maintenance_axis > raw_value:
                     result += f"  Next maintenance in: {next_maintenance_axis:.3f} {unit}\n"
                 else:
