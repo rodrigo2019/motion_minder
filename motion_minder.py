@@ -141,6 +141,9 @@ class MotionMinder:
         os.makedirs(os.path.join(self._db_fname), exist_ok=True)
         self._db_fname = os.path.join(self._db_fname, _DB_NAME)
 
+        # nbdm is default in some systems, the issue using ndbm it just write the data in the disk when its closed.
+        # opening and closing the file every time when we need to write consume some resources and we start to
+        # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
         dbm._defaultmod = dbm.dumb
         dbm._modules["dbm.dumb"] = dbm.dumb
         self._db = shelve.open(self._db_fname)
