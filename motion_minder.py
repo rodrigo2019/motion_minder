@@ -85,7 +85,7 @@ class _Args:
         Validate the 'UNIT' parameter.
         Premises:
             It must be a string with only 'mm', 'm' and 'km'.
-            It can be None by default and in this case it the motion minder will suggest the unit.
+            It can be None by default and in this case the motion minder will suggest the unit.
 
         :return:
         """
