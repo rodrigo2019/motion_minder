@@ -8,7 +8,11 @@ from threading import Thread, Lock
 from typing import Union
 
 _DB_NAME = "motion_minder"
-
+_UNIT_CONVERSION_FACTORS = {
+    "mm": 1,        # millimeters to millimeters (baseline)
+    "m": 1000,      # millimeters to meters
+    "km": 1000000,  # millimeters to kilometers
+}
 
 class _Args:
     def __init__(self, gcmd, gcode):
@@ -312,11 +316,7 @@ class MotionMinder:
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :return: The value in the desired unit.
         """
-        if unit == "m":
-            return value / 1000
-        elif unit == "km":
-            return value / 1000000
-        return value
+        return value / _UNIT_CONVERSION_FACTORS.get(unit, 1)
 
     @staticmethod
     def _convert_unit_to_mm(value: Union[int, float], unit: str) -> Union[int, float]:
@@ -327,11 +327,7 @@ class MotionMinder:
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :return: The value in mm.
         """
-        if unit == "m":
-            return value * 1000
-        elif unit == "km":
-            return value * 1000000
-        return value
+        return value * _UNIT_CONVERSION_FACTORS.get(unit, 1)
 
     def _return_odometer(self, required_unit: Union[str, None] = None) -> None:
         """
