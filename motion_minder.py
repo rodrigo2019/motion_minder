@@ -190,6 +190,7 @@ class MotionMinder:
         self._odometer = self._db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
+        self._printer.register_event_handler("klippy:shutdown", self._close_db)
         self._printer.register_event_handler(
             "homing:homing_move_begin", self._home_begin
         )
@@ -206,6 +207,19 @@ class MotionMinder:
         )
 
     def __del__(self):
+        """
+        Close the db file when the object is deleted.
+
+        :return:
+        """
+        self._close_db()
+
+    def _close_db(self):
+        """
+        Close the db file.
+
+        :return:
+        """
         self._db.close()
 
     def _home_begin(self, *args, **kwargs) -> None:  # pylint: disable=unused-argument
