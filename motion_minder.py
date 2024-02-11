@@ -181,7 +181,8 @@ class MotionMinder:
         # opening and closing the file every time when we need to write consume some resources and we start to
         # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
         with DumbDBMContext():
-            self._odometer = shelve.open(self._db_fname).get("odometer", {"x": 0, "y": 0, "z": 0})
+            with shelve.open(self._db_fname) as db:
+                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._lock = Lock()
         self._update_db = False
