@@ -1,48 +1,54 @@
 #!/bin/bash
-# This script uninstall MotionMinder
+
+KLIPPER_PATH="${HOME}/klipper"
+MOTION_MINDER_PATH="${HOME}/motion_minder"
+
 set -eu
+export LC_ALL=C
 
-SYSTEMDDIR="/etc/systemd/system"
-MOTION_MINDER_ENV="${HOME}/motion_minder-env"
-MOTION_MINDER_DIR="${HOME}/motion_minder"
-
-remove_all(){
-  echo -e "Stopping services"
-
-  services_list=($(sudo systemctl list-units -t service --full | grep MotionMinder | awk '{print $1}'))
-  echo -e "${services_list[@]}"
-  for service in "${services_list[@]}"
-  do
-    echo -e "${service}"
-    echo -e "Removing $service ..."
-    sudo systemctl stop $service
-    sudo systemctl disable $service
-    sudo rm -f $SYSTEMDDIR/$service
-    echo -e "Done!"
-  done
-
-  rm -rf "${HOME}/printer_data/logs/motion_minder*"
-
-
-  sudo systemctl daemon-reload
-  sudo systemctl reset-failed
-
-  ### remove MotionMinder dir
-  if [ -d "$MOTION_MINDER_ENV" ]; then
-    echo -e "Removing MotionMinder VENV directory ..."
-    rm -rf "${MOTION_MINDER_ENV}" && echo -e "Directory removed!"
+function pre_uninstall_checks {
+  if [ "$EUID" -eq 0 ]; then
+    echo "[PRE-CHECK] This script must not be run as root!"
+    exit -1
   fi
 
-  if [ -d "$MOTION_MINDER_DIR" ]; then
-    echo -e "Removing MotionMinder directory ..."
-    rm -rf "${MOTION_MINDER_DIR}" && echo -e "Directory removed!"
+  if [ ! -d "${MOTION_MINDER_PATH}" ]; then
+    echo "[ERROR] Motion Minder repository not found locally. Cannot proceed with uninstall."
+    exit -1
   fi
 }
 
-delete_db(){
-  echo -e "Removing MotionMinder database from moonraker ..."
-  "${MOTION_MINDER_ENV}"/bin/python "${MOTION_MINDER_DIR}"/scripts/delete_db.py
+function unlink_extension {
+  echo "[UNINSTALL] Unlinking Motion Minder scripts from your config directory..."
+  if [ -L "${KLIPPER_PATH}/klippy/extras/motion_minder.py" ]; then
+    rm -f "${KLIPPER_PATH}/klippy/extras/motion_minder.py"
+    echo "[UNINSTALL] Link removed successfully."
+  else
+    echo "[WARNING] Link does not exist or has already been removed."
+  fi
 }
 
-delete_db
-remove_all
+function remove_repository {
+  echo "[UNINSTALL] Removing Motion Minder repository..."
+  rm -rf "${MOTION_MINDER_PATH}"
+  echo "[UNINSTALL] Motion Minder repository removed successfully."
+}
+
+function restart_klipper {
+  echo "[POST-UNINSTALL] Restarting Klipper..."
+  sudo systemctl restart klipper
+}
+
+printf "\n=================================================\n"
+echo "- Motion Minder module uninstall script -"
+printf "=================================================\n\n"
+
+# Run steps
+pre_uninstall_checks
+unlink_extension
+remove_repository
+restart_klipper
+
+echo "Motion Minder module has been successfully uninstalled. Remove the motion_minder section from your printer.cfg file."
+echo "Remember to check for and manually delete the database if desired."
+echo "The database is located default at: ${HOME}/printer_data/data_base/motion_minder.*"

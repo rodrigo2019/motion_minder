@@ -1,81 +1,98 @@
 # MotionMinder
 
-Motion tracking for rails maintenance. Instead of relying solely on time, let's throw in some mileage, just like we do with cars. Time to see how many 'prints per kilometer' your trusty printer has got under its belt!
+<img src="motion_minder_logo.png" alt="logo" width="100">
+ 
+
+Motion tracking for rails maintenance. Instead of relying solely on time, let's throw in some mileage, just like we do
+with cars. Time to see how many 'prints per kilometer' your trusty printer has got under its belt!
 
 ## How it works
 
-It operates in two modes, automatically selected based on the current state of the printer:
+It works as a module for Klipper, it will track the movements of your printer and will calculate the distance
+traveled by each axis. It will also keep track of the total distance traveled by your printer, and will notify you
+when it's time to do some maintenance.
 
-  1. **Idle**: During this mode, the motion minder relies on tracking the carriage position through the live_motion object provided by Moonraker. It's important to note that this mode may have some limitations in terms of accuracy. This is primarily due to the time-sliced updates received from the websocket. As a result, small, high-speed movements may not be reliably detected, or the system might only capture partial movement.
-  1. **Printing**: In this state, movements are monitored based on the instructions within the G-code file. Specifically, the system focuses on tracking G1 and G0 commands, while Klipper macros and commands like `QUAD_GANTRY_LEVEL`, `Z_TILT_ADJUST`, `BED_MESH_CALIBRATE` and `G28` cannot be feasibly tracked in this mode.
+It tracks the movements of your printer by decorating the `toolhead.move` method. Decorations are a way to add
+functionality to existing methods. In this case, we are adding a function that will be called every time the
+`toolhead.move` method is called.
 
 ## Installation
 
 Follow these steps to install the Motion Minder in your printer:
 
-  1. Then, you can install the package by running over SSH on your printer:
+1. Then, you can install the package by running over SSH on your printer:
 
-     ```bash
-     wget -O - https://raw.githubusercontent.com/rodrigo2019/motion_minder/main/install.sh | bash
-     ```
+   ```bash
+   wget -O - https://raw.githubusercontent.com/rodrigo2019/motion_minder/main/install.sh | bash
+   ```
 
-  1. Finally, append the following to your `printer.cfg` file and restart Klipper (if prefered, you can include only the needed macros: using `*.cfg` is a convenient way to include them all at once):
+1. Finally, append the following to your `printer.cfg` file and restart Klipper:
 
-     ```ini
-     [include motion_minder/*.cfg]
-     ```
+   ```ini
+   [motion_minder]
+   ```
 
-  1. Optionally, if you want to get automatic updates, add the following to your `moonraker.cfg` file:
+1. Optionally, if you want to get automatic updates, add the following to your `moonraker.cfg` file:
 
-     ```ini
-     [update_manager MotionMinder]
-     type: git_repo
-     path: ~/motion_minder
-     channel: dev
-     origin: https://github.com/rodrigo2019/motion_minder.git
-     primary_branch: main
-     install_script: install.sh
-     ```
+   ```ini
+   [update_manager MotionMinder]
+   type: git_repo
+   path: ~/motion_minder
+   channel: dev
+   origin: https://github.com/rodrigo2019/motion_minder.git
+   primary_branch: main
+   install_script: install.sh
+   managed_services: klipper
+   ```
+
 ## Usage
 
-The motion minder is designed to be as unobtrusive as possible. It will automatically start tracking your printer's 
-movements as soon as it's installed. You can check the and set the motion minder by running the following 
-commands over your favorite printer console client (e.g. Fluidd, Mainsail, etc.):
+The motion minder kicks in automatically upon installation, tracking your printer's movements.
+To check and configure it, use the following commands with your favorite printer console client
+(e.g., Fluidd, Mainsail, etc.):
 
 First of all, set when will be your next maintenance:
 
 ```bash
-MOTION_MINDER NEXT_MAINTENANCE=100
+MOTION_MINDER SET_MAINTENANCE=100
 ```
+
+doing this, the motion minder will notify you when the printer reaches 100km of movement.
 
 Then, you can check the current status of the motion minder:
 
 ```bash
-MOTION_MINDER STATS=TRUE
+MOTION_MINDER
 ```
 
 If you need, you can reset the odometer to a desired value:
 
 ```bash
-MOTION_MINDER SET_AXIS=10 AXES=X
+MOTION_MINDER SET_ODOMETER=100 AXES=xy UNIT=mm
 ```
 
-As a experimental feature, you can also process your printer history, its necessary to have all the G-code files in the 
-gcodes folder, then you can run the following command:
+in the example above, the odometer will be set to 100km for the x and y axis.
 
-It can take a while, depending on the number of files, so be patient.
+Now, lets say you want to set the maintenance to 100km relative from your current odometer:
+
 ```bash
-MOTION_MINDER PROCESS_HISTORY=TRUE
+MOTION_MINDER SET_MAINTENANCE=100 RELATIVE=True
 ```
 
-## Macro arguments
+or 
+
+```bash
+ MOTION_MINDER SET_MAINTENANCE=100 RELATIVE=True AXES=xyz UNIT=km
+```
+
+## Module arguments
 
 The following arguments can be used to customize the behavior of the motion minder:
 
-| Argument           | Default | Description                                                                                                    |
-|--------------------|---------|----------------------------------------------------------------------------------------------------------------|
-| `NEXT_MAINTENANCE` | None    | The distance (in km) to the next maintenance. it can be used with `AXES` to specify which axis you want to set |
-| `SET_AXIS`         | None    | A value to set the odometer. It can be used with `AXES` to specify which axis you want to set                  |
-| `STATS`            | None    | If set to `TRUE`, it will print the current status of the motion minder                                         |
-| `PROCESS_HISTORY`  | None    | If set to `TRUE`, it will process all the G-code files in the gcodes folder                                     |
-| `AXES`             | "xyz"   | The axis to be used with `NEXT_MAINTENANCE` and `SET_AXES`                                                     |
+| Argument          | Default | Description                                                                                                                                                                                                             |
+|-------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `SET_MAINTENANCE` | None    | A value to determine the remaining distance until the next maintenance. You can customize it using the `AXES` parameter to specify the desired axis and the `UNIT` parameter to set the measurement unit for the value. |
+| `SET_ODOMETER`    | None    | A value to set the odometer. You can customize it using the `AXES` parameter to specify the desired axis and the `UNIT` parameter to set the measurement unit for the value.                                            |
+| `AXES`            | "xyz"   | The axis to be used with `SET_MAINTENANCE` and `SET_ODOMETER`.  It can be 'x', 'y', 'z' or any combination of them.                                                                                                     |
+| `UNIT`            | None    | The unit to be used with `SET_MAINTENANCE` and `SET_ODOMETER` or alone. It can be 'mm', 'm' or 'km'. `SET_MAINTENANCE` and `SET_ODOMETER` will use "km" as default.                                                     |
+| `RELATIVE`        | False   | If set to `True`, the `SET_MAINTENANCE` and `SET_ODOMETER` values will be relative to the current odometer values.                                                                                                      |
