@@ -9,10 +9,11 @@ from typing import Union
 
 _DB_NAME = "motion_minder"
 _UNIT_CONVERSION_FACTORS = {
-    "mm": 1,        # millimeters to millimeters (baseline)
-    "m": 1000,      # millimeters to meters
+    "mm": 1,  # millimeters to millimeters (baseline)
+    "m": 1000,  # millimeters to meters
     "km": 1000000,  # millimeters to kilometers
 }
+
 
 class _Args:
     def __init__(self, gcmd, gcode):
