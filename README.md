@@ -1,5 +1,8 @@
 # MotionMinder
 
+<img src="motion_minder_logo.png" alt="logo" width="100">
+ 
+
 Motion tracking for rails maintenance. Instead of relying solely on time, let's throw in some mileage, just like we do
 with cars. Time to see how many 'prints per kilometer' your trusty printer has got under its belt!
 
