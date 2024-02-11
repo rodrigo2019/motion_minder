@@ -338,13 +338,13 @@ class MotionMinder:
             value = self._convert_mm_to_unit(raw_value, unit)
             result += f"{axis.upper()}: {value:.3f} {unit}\n"
 
-            next_maintenance_axis = next_maintenance[axis]
-            if next_maintenance_axis is not None:
-                unit = (self._get_recommended_unit(next_maintenance_axis - raw_value)
+            next_maintenance_axis_raw = next_maintenance[axis]
+            if next_maintenance_axis_raw is not None:
+                unit = (self._get_recommended_unit(next_maintenance_axis_raw - raw_value)
                         if required_unit is None
                         else required_unit)
-                next_maintenance_axis = self._convert_mm_to_unit(next_maintenance_axis - raw_value, unit)
-                if next_maintenance_axis > raw_value:
+                next_maintenance_axis = self._convert_mm_to_unit(next_maintenance_axis_raw - raw_value, unit)
+                if next_maintenance_axis_raw > raw_value:
                     result += f"  Next maintenance in: {next_maintenance_axis:.3f} {unit}\n"
                 else:
                     result += (
