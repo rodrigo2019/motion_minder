@@ -130,6 +130,22 @@ class _Args:
             raise self._gcode.error("'RELATIVE' can only be used with 'SET_ODOMETER' or 'SET_MAINTENANCE'.")
 
 
+class DumbDBMContext:
+
+    def __enter__(self):
+        # Backup original dbm settings
+        self.original_defaultmod = dbm._defaultmod
+        self.original_modules = dbm._modules.copy()
+        # Set desired dbm modification
+        dbm._defaultmod = dbm.dumb
+        dbm._modules["dbm.dumb"] = dbm.dumb
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Revert dbm settings to original
+        dbm._defaultmod = self.original_defaultmod
+        dbm._modules = self.original_modules
+
+
 class MotionMinder:
     """
     This plugin keeps track of the distance traveled by the toolhead.
@@ -159,11 +175,8 @@ class MotionMinder:
         # nbdm is default in some systems, the issue using ndbm it just write the data in the disk when its closed.
         # opening and closing the file every time when we need to write consume some resources and we start to
         # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
-        dbm._defaultmod = dbm.dumb
-        dbm._modules["dbm.dumb"] = dbm.dumb
-        self._db = shelve.open(self._db_fname)
-        dbm._defaultmod = None
-        dbm._modules = {}
+        with DumbDBMContext():
+            self._db = shelve.open(self._db_fname)
 
         self._lock = Lock()
         self._update_db = False
