@@ -138,6 +138,11 @@ class _Args:
 class DumbDBMContext:
 
     def __enter__(self):
+        """
+        Set the dbm settings to use the dumb dbm.
+
+        :return:
+        """
         # Backup original dbm settings
         self.original_defaultmod = dbm._defaultmod
         self.original_modules = dbm._modules.copy()
@@ -146,6 +151,14 @@ class DumbDBMContext:
         dbm._modules["dbm.dumb"] = dbm.dumb
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Revert dbm settings to original.
+
+        :param exc_type:
+        :param exc_val:
+        :param exc_tb:
+        :return:
+        """
         # Revert dbm settings to original
         dbm._defaultmod = self.original_defaultmod
         dbm._modules = self.original_modules
