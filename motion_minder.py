@@ -8,6 +8,11 @@ from threading import Thread, Lock
 from typing import Union
 
 _DB_NAME = "motion_minder"
+_UNIT_CONVERSION_FACTORS = {
+    "mm": 1,  # millimeters to millimeters (baseline)
+    "m": 1000,  # millimeters to meters
+    "km": 1000000,  # millimeters to kilometers
+}
 
 
 class _Args:
@@ -130,6 +135,35 @@ class _Args:
             raise self._gcode.error("'RELATIVE' can only be used with 'SET_ODOMETER' or 'SET_MAINTENANCE'.")
 
 
+class DumbDBMContext:
+
+    def __enter__(self):
+        """
+        Set the dbm settings to use the dumb dbm.
+
+        :return:
+        """
+        # Backup original dbm settings
+        self.original_defaultmod = dbm._defaultmod
+        self.original_modules = dbm._modules.copy()
+        # Set desired dbm modification
+        dbm._defaultmod = dbm.dumb
+        dbm._modules["dbm.dumb"] = dbm.dumb
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Revert dbm settings to original.
+
+        :param exc_type:
+        :param exc_val:
+        :param exc_tb:
+        :return:
+        """
+        # Revert dbm settings to original
+        dbm._defaultmod = self.original_defaultmod
+        dbm._modules = self.original_modules
+
+
 class MotionMinder:
     """
     This plugin keeps track of the distance traveled by the toolhead.
@@ -159,17 +193,13 @@ class MotionMinder:
         # nbdm is default in some systems, the issue using ndbm it just write the data in the disk when its closed.
         # opening and closing the file every time when we need to write consume some resources and we start to
         # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
-        dbm._defaultmod = dbm.dumb
-        dbm._modules["dbm.dumb"] = dbm.dumb
-        self._db = shelve.open(self._db_fname)
-        dbm._defaultmod = None
-        dbm._modules = {}
+        with DumbDBMContext():
+            with shelve.open(self._db_fname) as db:
+                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._lock = Lock()
         self._update_db = False
         self._ignore_position = False
-
-        self._odometer = self._db.get("odometer", {"x": 0, "y": 0, "z": 0})
 
         self._printer.register_event_handler("klippy:mcu_identify", self._get_toolhead)
         self._printer.register_event_handler(
@@ -186,9 +216,6 @@ class MotionMinder:
             self._cmd_motion_minder,
             desc="Get/set odometer parameters.",
         )
-
-    def __del__(self):
-        self._db.close()
 
     def _home_begin(self, *args, **kwargs) -> None:  # pylint: disable=unused-argument
         """
@@ -222,8 +249,9 @@ class MotionMinder:
         while True:
             time.sleep(5)
             if self._update_db:
-                with self._lock:
-                    self._db["odometer"] = self._odometer  # write the odometer to disk
+                with self._lock, DumbDBMContext():
+                    with shelve.open(self._db_fname) as db:
+                        db["odometer"] = self._odometer
                     self._update_db = False
 
     def _decorate_move(self, func: callable) -> callable:
@@ -299,11 +327,7 @@ class MotionMinder:
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :return: The value in the desired unit.
         """
-        if unit == "m":
-            return value / 1000
-        elif unit == "km":
-            return value / 1000000
-        return value
+        return value / _UNIT_CONVERSION_FACTORS.get(unit, 1)
 
     @staticmethod
     def _convert_unit_to_mm(value: Union[int, float], unit: str) -> Union[int, float]:
@@ -314,11 +338,7 @@ class MotionMinder:
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :return: The value in mm.
         """
-        if unit == "m":
-            return value * 1000
-        elif unit == "km":
-            return value * 1000000
-        return value
+        return value * _UNIT_CONVERSION_FACTORS.get(unit, 1)
 
     def _return_odometer(self, required_unit: Union[str, None] = None) -> None:
         """
@@ -327,8 +347,9 @@ class MotionMinder:
         :return:
         """
         result = ""
-        with self._lock:
-            next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
+        with self._lock, DumbDBMContext():
+            with shelve.open(self._db_fname) as db:
+                next_maintenance = db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
         for axis in self._odometer:
             raw_value = self._odometer[axis]
 
@@ -368,8 +389,9 @@ class MotionMinder:
         for axis in axes:
             add_value = self._odometer[axis] if relative else 0
             self._odometer[axis] = value + add_value
-        with self._lock:
-            self._db["odometer"] = self._odometer
+        with self._lock, DumbDBMContext():
+            with shelve.open(self._db_fname) as db:
+                db["odometer"] = self._odometer
         self._return_odometer()
 
     def _set_maintenance(self, value: Union[int, float], axes: str, unit: str, relative: bool) -> None:
@@ -383,15 +405,16 @@ class MotionMinder:
         :return:
         """
         value = self._convert_unit_to_mm(value, unit)
-        with self._lock:
-            next_maintenance = self._db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
-            maintenance_period = self._db.get(f"maintenance_period", {"x": None, "y": None, "z": None})
-            for axis in axes:
-                add_value = self._odometer[axis] if relative else 0
-                next_maintenance[axis] = value + add_value
-                maintenance_period[axis] = value
-            self._db[f"next_maintenance"] = next_maintenance
-            self._db[f"maintenance"] = maintenance_period
+        with self._lock, DumbDBMContext():
+            with shelve.open(self._db_fname) as db:
+                next_maintenance = db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
+                maintenance_period = db.get(f"maintenance_period", {"x": None, "y": None, "z": None})
+                for axis in axes:
+                    add_value = self._odometer[axis] if relative else 0
+                    next_maintenance[axis] = value + add_value
+                    maintenance_period[axis] = value
+                db[f"next_maintenance"] = next_maintenance
+                db[f"maintenance"] = maintenance_period
         self._return_odometer()
 
 
