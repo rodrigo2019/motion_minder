@@ -89,14 +89,17 @@ class _Args:
         """
         Validate the 'AXES' parameter.
         Premises:
-            It must be a string with only 'x', 'y' and 'z'.
-            It cannot have duplicate axes (values).
+            The axes are 'x', 'y', 'z', 'e' or any combination of them.
 
         :return:
         """
+        if self.axes is None:
+            self.axes = "xyz"
+
         for axis in self.axes:
-            if axis not in "xyz":
-                raise self._gcode.error(f"Invalid '{axis}' axis.")
+            if axis not in "xyze":
+                raise self._gcode.error(f"Invalid axis '{axis}'. The valid axes are 'x', 'y', 'z', and 'e'.")
+
         if len(self.axes) != len(set(self.axes)):
             raise self._gcode.error(f"Duplicate axes.")
 
@@ -174,14 +177,15 @@ class MotionMinder:
 
     def __init__(self, config):
         """
+        Initialize the MotionMinder class.
 
-        :param config: The klippy config object.
+        :param config: The config object provided by klippy.
         """
         self._config = config
         self._printer = config.get_printer()
         self._toolhead = None
         self._gcode = self._printer.lookup_object("gcode")
-        self._position = {"x": 0, "y": 0, "z": 0}
+        self._position = {"x": 0, "y": 0, "z": 0, "e": 0}
 
         self._db_fname = self._printer.get_start_args().get("config_file", "")
         self._db_fname = os.path.split(self._db_fname)[0]
@@ -195,7 +199,7 @@ class MotionMinder:
         # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
         with DumbDBMContext():
             with shelve.open(self._db_fname) as db:
-                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
+                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0, "e": 0})
 
         self._lock = Lock()
         self._update_db = False
@@ -271,6 +275,13 @@ class MotionMinder:
                     self._odometer[axis] += abs(newpos[i] - self._position[axis])
                     self._position[axis] = newpos[i]
                     self._update_db = True
+                    
+            if len(newpos) > 3 and not self._ignore_position:
+                if newpos[3] != self._position["e"]:
+                    self._odometer["e"] += abs(newpos[3] - self._position["e"])
+                    self._position["e"] = newpos[3]
+                    self._update_db = True
+                    
             return func(newpos, speed)
 
         return wrapper
@@ -344,15 +355,16 @@ class MotionMinder:
         """
         Return the odometer value to the user.
 
+        :param required_unit: The unit to return the value in. If None, it will use the recommended unit.
         :return:
         """
         result = ""
         with self._lock, DumbDBMContext():
             with shelve.open(self._db_fname) as db:
-                next_maintenance = db.get(f"next_maintenance", {"x": None, "y": None, "z": None})
-        for axis in self._odometer:
+                next_maintenance = db.get("next_maintenance", {"x": None, "y": None, "z": None})
+                
+        for axis in "xyz":
             raw_value = self._odometer[axis]
-
             unit = (self._get_recommended_unit(raw_value)
                     if required_unit is None
                     else required_unit)
@@ -373,6 +385,15 @@ class MotionMinder:
                     )
             else:
                 result += "  Maintenance not set.\n"
+                
+        if "e" in self._odometer:
+            raw_value = self._odometer["e"]
+            unit = (self._get_recommended_unit(raw_value)
+                    if required_unit is None
+                    else required_unit)
+            value = self._convert_mm_to_unit(raw_value, unit)
+            result += f"E: {value:.3f} {unit}\n"
+                
         self._gcode.respond_info(result)
 
     def _set_odometer(self, value: Union[int, float], axes: str, unit: str, relative: bool) -> None:
@@ -380,17 +401,17 @@ class MotionMinder:
         Set the odometer values.
 
         :param value: The value in the desired unit. It can be 'mm', 'm' or 'km'.
-        :param axes: The axes to set. It can be 'x', 'y', 'z' or any combination of them.
+        :param axes: The axes to set. It can be 'x', 'y', 'z', 'e' or any combination of them.
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :param relative: If True the value is added to the current odometer value.
         :return:
         """
         value = self._convert_unit_to_mm(value, unit)
-        for axis in axes:
-            add_value = self._odometer[axis] if relative else 0
-            self._odometer[axis] = value + add_value
         with self._lock, DumbDBMContext():
             with shelve.open(self._db_fname) as db:
+                for axis in axes:
+                    add_value = self._odometer[axis] if relative else 0
+                    self._odometer[axis] = value + add_value
                 db["odometer"] = self._odometer
         self._return_odometer()
 
