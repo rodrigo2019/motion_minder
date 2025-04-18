@@ -89,16 +89,21 @@ class _Args:
         """
         Validate the 'AXES' parameter.
         Premises:
-            The axes are 'x', 'y', 'z', 'e' or any combination of them.
+            The axes are 'x', 'y', 'z', 'e0', 'e1', etc. or any combination of them.
 
         :return:
         """
         if self.axes is None:
             self.axes = "xyz"
 
+        valid_axes = set("xyz")
+        # Add extruder axes (e0, e1, e2, etc.)
+        for i in range(10):  # Support up to 10 extruders
+            valid_axes.add(f"e{i}")
+            
         for axis in self.axes:
-            if axis not in "xyze":
-                raise self._gcode.error(f"Invalid axis '{axis}'. The valid axes are 'x', 'y', 'z', and 'e'.")
+            if axis not in valid_axes:
+                raise self._gcode.error(f"Invalid axis '{axis}'. Valid axes are 'x', 'y', 'z', and 'e0' through 'e9'.")
 
         if len(self.axes) != len(set(self.axes)):
             raise self._gcode.error(f"Duplicate axes.")
@@ -185,7 +190,12 @@ class MotionMinder:
         self._printer = config.get_printer()
         self._toolhead = None
         self._gcode = self._printer.lookup_object("gcode")
-        self._position = {"x": 0, "y": 0, "z": 0, "e": 0}
+        self._position = {"x": 0, "y": 0, "z": 0}
+        self._extruder_count = config.getint('extruder_count', 1)
+        
+        # Initialize positions for all extruders (e0, e1, e2, etc.)
+        for i in range(self._extruder_count):
+            self._position[f"e{i}"] = 0
 
         self._db_fname = self._printer.get_start_args().get("config_file", "")
         self._db_fname = os.path.split(self._db_fname)[0]
@@ -199,7 +209,12 @@ class MotionMinder:
         # have the issue "timer too close" from klipper. Using dumb fix that, even theoretically slower.
         with DumbDBMContext():
             with shelve.open(self._db_fname) as db:
-                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0, "e": 0})
+                self._odometer = db.get("odometer", {"x": 0, "y": 0, "z": 0})
+                
+                # Initialize odometer for all extruders (e0, e1, e2, etc.)
+                for i in range(self._extruder_count):
+                    if f"e{i}" not in self._odometer:
+                        self._odometer[f"e{i}"] = 0
 
         self._lock = Lock()
         self._update_db = False
@@ -277,9 +292,17 @@ class MotionMinder:
                     self._update_db = True
                     
             if len(newpos) > 3 and not self._ignore_position:
-                if newpos[3] != self._position["e"]:
-                    self._odometer["e"] += abs(newpos[3] - self._position["e"])
-                    self._position["e"] = newpos[3]
+                extruder_index = 0
+                try:
+                    if hasattr(self._toolhead, 'get_extruder') and self._toolhead.get_extruder():
+                        extruder_index = getattr(self._toolhead.get_extruder(), 'extruder_index', 0)
+                except Exception:
+                    extruder_index = 0
+                
+                extruder_key = f"e{extruder_index}"
+                if extruder_key in self._position and newpos[3] != self._position[extruder_key]:
+                    self._odometer[extruder_key] += abs(newpos[3] - self._position[extruder_key])
+                    self._position[extruder_key] = newpos[3]
                     self._update_db = True
                     
             return func(newpos, speed)
@@ -385,14 +408,18 @@ class MotionMinder:
                     )
             else:
                 result += "  Maintenance not set.\n"
-                
-        if "e" in self._odometer:
-            raw_value = self._odometer["e"]
-            unit = (self._get_recommended_unit(raw_value)
-                    if required_unit is None
-                    else required_unit)
-            value = self._convert_mm_to_unit(raw_value, unit)
-            result += f"E: {value:.3f} {unit}\n"
+        
+        extruder_keys = [key for key in self._odometer.keys() if key.startswith('e')]
+        if extruder_keys:
+            result += "\nExtruders (informative only):\n"
+            for extruder_key in sorted(extruder_keys):
+                raw_value = self._odometer[extruder_key]
+                unit = (self._get_recommended_unit(raw_value)
+                        if required_unit is None
+                        else required_unit)
+                value = self._convert_mm_to_unit(raw_value, unit)
+                display_name = f"E{extruder_key[1:]}"
+                result += f"{display_name}: {value:.3f} {unit}\n"
                 
         self._gcode.respond_info(result)
 
@@ -401,7 +428,7 @@ class MotionMinder:
         Set the odometer values.
 
         :param value: The value in the desired unit. It can be 'mm', 'm' or 'km'.
-        :param axes: The axes to set. It can be 'x', 'y', 'z', 'e' or any combination of them.
+        :param axes: The axes to set. It can be 'x', 'y', 'z', 'e0', 'e1', etc. or any combination of them.
         :param unit: The desired unit. It can be 'mm', 'm' or 'km'.
         :param relative: If True the value is added to the current odometer value.
         :return:
@@ -410,8 +437,12 @@ class MotionMinder:
         with self._lock, DumbDBMContext():
             with shelve.open(self._db_fname) as db:
                 for axis in axes:
-                    add_value = self._odometer[axis] if relative else 0
-                    self._odometer[axis] = value + add_value
+                    if axis == 'e' and 'e' not in self._odometer and 'e0' in self._odometer:
+                        axis = 'e0'
+                        
+                    if axis in self._odometer:
+                        add_value = self._odometer[axis] if relative else 0
+                        self._odometer[axis] = value + add_value
                 db["odometer"] = self._odometer
         self._return_odometer()
 
